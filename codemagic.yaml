@@ -15,6 +15,10 @@ workflows:
         BUNDLE_ID: com.mediahouse.edge
         # App Store Connect -> App -> General -> App Information -> Apple ID
         APP_STORE_APPLE_ID: 6762801853
+        # IMPORTANT: Set this as a secure environment variable in Codemagic UI.
+        # Generate once (RSA 2048) and reuse it to avoid creating new certificates every build.
+        # Example generation (run locally): `ssh-keygen -t rsa -b 2048 -f codemagic_cert_key -q -N ""`
+        # Then paste the contents of the generated key file into `CERTIFICATE_PRIVATE_KEY` in Codemagic.
     scripts:
       - name: Pub get
         script: flutter pub get
@@ -26,7 +30,8 @@ workflows:
         script: |
           app-store-connect fetch-signing-files "$BUNDLE_ID" \
             --type IOS_APP_STORE \
-            --create
+            --create \
+            --certificate-key @env:CERTIFICATE_PRIVATE_KEY
       - name: Import certificates
         script: keychain add-certificates
       - name: Set up code signing settings
