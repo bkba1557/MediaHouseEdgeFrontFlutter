@@ -30,6 +30,13 @@ workflows:
           cd ios
           pod install
 
+      # 🔥 أهم خطوة (تحل مشكلتك)
+      - name: Fetch signing files
+        script: |
+          app-store-connect fetch-signing-files "$BUNDLE_ID" \
+            --type IOS_APP_STORE \
+            --create
+
       - name: Set up code signing
         script: |
           xcode-project use-profiles
