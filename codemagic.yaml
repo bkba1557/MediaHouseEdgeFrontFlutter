@@ -30,7 +30,10 @@ workflows:
           cd ios
           pod install
 
-      # 🔥 أهم خطوة (تحل مشكلتك)
+      - name: Initialize keychain
+        script: |
+          keychain initialize
+
       - name: Fetch signing files
         script: |
           app-store-connect fetch-signing-files "$BUNDLE_ID" \
@@ -53,9 +56,17 @@ workflows:
 
           echo "IOS_BUILD_NUMBER=$IOS_BUILD_NUMBER" >> "$CM_ENV"
 
+      - name: Debug provisioning profiles
+        script: |
+          echo "Installed provisioning profiles:"
+          ls -la ~/Library/MobileDevice/Provisioning\ Profiles/ || true
+
       - name: Build IPA
         script: |
-          flutter build ipa --release --build-number="$IOS_BUILD_NUMBER"
+          flutter build ipa \
+            --release \
+            --build-number="$IOS_BUILD_NUMBER" \
+            --export-method=app-store
 
     artifacts:
       - build/ios/ipa/*.ipa
