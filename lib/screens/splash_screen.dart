@@ -95,23 +95,6 @@ class _SplashScreenState extends State<SplashScreen>
                   top: -80 + (math.cos(value * math.pi * 2) * 45),
                   opacity: 0.08,
                 ),
-                Positioned(
-                  left: -180 + (value * 220),
-                  right: -120,
-                  top: screenSize.height * 0.24,
-                  child: Transform.rotate(
-                    angle: -0.08,
-                    child: Container(
-                      height: 120,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.045),
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.07),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
                 Positioned.fill(child: child!),
               ],
             ),
@@ -131,20 +114,20 @@ class _SplashScreenState extends State<SplashScreen>
                     boxShadow: [
                       BoxShadow(
                         color: const Color(0xFFE50914).withValues(alpha: 0.25),
-                        blurRadius: 34,
-                        spreadRadius: 5,
+                        blurRadius: 22,
+                        spreadRadius: 4,
                       ),
                       BoxShadow(
                         color: Colors.black.withValues(alpha: 0.30),
-                        blurRadius: 18,
+                        blurRadius: 5,
                         spreadRadius: 2,
                       ),
                     ],
                   ),
                   child: Image.asset(
                     'assets/images/logo.png',
-                    width: 250,
-                    height: 150,
+                    width: 300,
+                    height: 250,
                     fit: BoxFit.contain,
                   ),
                 ),

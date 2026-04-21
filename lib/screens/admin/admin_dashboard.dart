@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../models/media.dart';
+import '../../providers/auth_provider.dart';
 import '../../providers/media_provider.dart';
 import '../../providers/response_provider.dart';
+import '../../widgets/app_network_image.dart';
 import 'upload_media_screen.dart';
 import 'responses_screen.dart';
 
@@ -146,6 +149,7 @@ class AdminHomeScreen extends StatelessWidget {
   Widget _buildRecentMedia(BuildContext context, MediaProvider mediaProvider) {
     final recentMedia = mediaProvider.mediaList.take(8).toList();
     final isMobile = MediaQuery.sizeOf(context).width < 600;
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
     if (recentMedia.isEmpty) {
       return Container(
@@ -175,12 +179,63 @@ class AdminHomeScreen extends StatelessWidget {
               child: Column(
                 children: [
                   Expanded(
-                    child: Image.network(
-                      media.thumbnail ?? media.url,
-                      fit: BoxFit.cover,
-                      width: double.infinity,
-                      errorBuilder: (context, error, stackTrace) =>
-                          const Icon(Icons.error),
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        AppNetworkImage(
+                          url: media.thumbnail ?? media.url,
+                          fit: BoxFit.cover,
+                          placeholder: Container(
+                            color: Colors.black.withValues(alpha: 0.20),
+                            child: const Center(
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Color(0xFFE50914),
+                              ),
+                            ),
+                          ),
+                          errorWidget: Container(
+                            color: Colors.black.withValues(alpha: 0.20),
+                            child: const Center(
+                              child: Icon(
+                                Icons.broken_image_outlined,
+                                color: Colors.white70,
+                              ),
+                            ),
+                          ),
+                        ),
+                        Positioned(
+                          top: 6,
+                          right: 6,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              _AdminMediaAction(
+                                icon: Icons.edit_outlined,
+                                tooltip: 'Edit',
+                                onPressed: () => _showEditMediaDialog(
+                                  context: context,
+                                  media: media,
+                                  mediaProvider: mediaProvider,
+                                  authProvider: authProvider,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              _AdminMediaAction(
+                                icon: Icons.delete_outline,
+                                tooltip: 'Delete',
+                                color: const Color(0xFFE50914),
+                                onPressed: () => _confirmDeleteMedia(
+                                  context: context,
+                                  media: media,
+                                  mediaProvider: mediaProvider,
+                                  authProvider: authProvider,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                   Padding(
@@ -199,6 +254,185 @@ class AdminHomeScreen extends StatelessWidget {
         },
       ),
     );
+  }
+
+  Future<void> _confirmDeleteMedia({
+    required BuildContext context,
+    required Media media,
+    required MediaProvider mediaProvider,
+    required AuthProvider authProvider,
+  }) async {
+    final token = authProvider.token;
+    if (token == null || token.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Missing auth token')),
+      );
+      return;
+    }
+
+    final confirmed = await showDialog<bool>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            title: const Text('Delete media?'),
+            content: Text('Delete "${media.title}" permanently?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext, false),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFE50914),
+                  foregroundColor: Colors.white,
+                ),
+                onPressed: () => Navigator.pop(dialogContext, true),
+                child: const Text('Delete'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+
+    if (!confirmed) return;
+
+    try {
+      await mediaProvider.deleteMedia(media.id, token);
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Deleted')),
+      );
+    } catch (error) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Delete failed: $error')),
+      );
+    }
+  }
+
+  Future<void> _showEditMediaDialog({
+    required BuildContext context,
+    required Media media,
+    required MediaProvider mediaProvider,
+    required AuthProvider authProvider,
+  }) async {
+    final token = authProvider.token;
+    if (token == null || token.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Missing auth token')),
+      );
+      return;
+    }
+
+    final titleController = TextEditingController(text: media.title);
+    final descriptionController = TextEditingController(text: media.description);
+
+    const typeOptions = ['image', 'video'];
+    const categoryOptions = ['film', 'montage', 'advertisement', 'design', 'story'];
+
+    String type = typeOptions.contains(media.type) ? media.type : 'image';
+    String category =
+        categoryOptions.contains(media.category) ? media.category : 'film';
+
+    bool saved = false;
+    try {
+      saved = await showDialog<bool>(
+            context: context,
+            builder: (dialogContext) => AlertDialog(
+              title: const Text('Edit media'),
+              content: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 520),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TextField(
+                        controller: titleController,
+                        decoration: const InputDecoration(labelText: 'Title'),
+                      ),
+                      const SizedBox(height: 10),
+                      TextField(
+                        controller: descriptionController,
+                        minLines: 2,
+                        maxLines: 4,
+                        decoration:
+                            const InputDecoration(labelText: 'Description'),
+                      ),
+                      const SizedBox(height: 10),
+                      DropdownButtonFormField<String>(
+                        value: type,
+                        decoration: const InputDecoration(labelText: 'Type'),
+                        items: typeOptions
+                            .map(
+                              (value) => DropdownMenuItem(
+                                value: value,
+                                child: Text(value),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: (value) => type = value ?? type,
+                      ),
+                      const SizedBox(height: 10),
+                      DropdownButtonFormField<String>(
+                        value: category,
+                        decoration:
+                            const InputDecoration(labelText: 'Category'),
+                        items: categoryOptions
+                            .map(
+                              (value) => DropdownMenuItem(
+                                value: value,
+                                child: Text(value),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: (value) => category = value ?? category,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext, false),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFE50914),
+                    foregroundColor: Colors.white,
+                  ),
+                  onPressed: () => Navigator.pop(dialogContext, true),
+                  child: const Text('Save'),
+                ),
+              ],
+            ),
+          ) ??
+          false;
+      if (!saved) return;
+
+      final updatedTitle = titleController.text.trim();
+      final updatedDescription = descriptionController.text.trim();
+
+      await mediaProvider.updateMediaMetadata(
+        id: media.id,
+        token: token,
+        title: updatedTitle,
+        description: updatedDescription,
+        type: type,
+        category: category,
+      );
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Updated')),
+      );
+    } catch (error) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Update failed: $error')),
+      );
+    } finally {
+      titleController.dispose();
+      descriptionController.dispose();
+    }
   }
 
   Widget _buildStatCard(
@@ -246,6 +480,39 @@ class AdminHomeScreen extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AdminMediaAction extends StatelessWidget {
+  final IconData icon;
+  final String tooltip;
+  final Color? color;
+  final VoidCallback onPressed;
+
+  const _AdminMediaAction({
+    required this.icon,
+    required this.tooltip,
+    required this.onPressed,
+    this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.black.withValues(alpha: 0.55),
+      borderRadius: BorderRadius.circular(8),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(8),
+        onTap: onPressed,
+        child: Tooltip(
+          message: tooltip,
+          child: Padding(
+            padding: const EdgeInsets.all(6),
+            child: Icon(icon, size: 18, color: color ?? Colors.white),
+          ),
         ),
       ),
     );

@@ -1,8 +1,8 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 
 import '../models/media.dart';
+import '../widgets/app_network_image.dart';
 
 class StoryViewScreen extends StatefulWidget {
   final Media media;
@@ -107,13 +107,11 @@ class _StoryViewScreenState extends State<StoryViewScreen> {
       minScale: 1,
       maxScale: 3,
       child: Center(
-        child: CachedNetworkImage(
-          imageUrl: widget.media.url,
+        child: AppNetworkImage(
+          url: widget.media.url,
           fit: BoxFit.contain,
-          placeholder: (_, __) => const CircularProgressIndicator(
-            color: Color(0xFFE50914),
-          ),
-          errorWidget: (_, __, ___) => const Icon(
+          placeholder: const CircularProgressIndicator(color: Color(0xFFE50914)),
+          errorWidget: const Icon(
             Icons.broken_image_outlined,
             color: Colors.white,
             size: 54,

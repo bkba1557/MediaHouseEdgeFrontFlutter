@@ -4,6 +4,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
+import '../config/app_config.dart';
 import '../models/media.dart';
 
 class MediaProvider with ChangeNotifier {
@@ -15,7 +16,7 @@ class MediaProvider with ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
 
-  final String _baseUrl = 'http://10.0.2.2:5000/api';
+  String get _baseUrl => AppConfig.apiBaseUrl;
 
   Future<void> fetchMedia({String? type, String? category}) async {
     _isLoading = true;
@@ -142,6 +143,64 @@ class MediaProvider with ChangeNotifier {
       }
     } catch (e) {
       rethrow;
+    }
+  }
+
+  Future<void> updateMediaMetadata({
+    required String id,
+    required String token,
+    required String title,
+    required String description,
+    required String type,
+    required String category,
+    String? url,
+    String? thumbnail,
+  }) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final body = <String, dynamic>{
+        'title': title,
+        'description': description,
+        'type': type,
+        'category': category,
+      };
+      if (url != null) body['url'] = url;
+      if (thumbnail != null) body['thumbnail'] = thumbnail;
+
+      final response = await http.patch(
+        Uri.parse('$_baseUrl/media/$id'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: json.encode(body),
+      );
+
+      if (response.statusCode == 200) {
+        final decoded = json.decode(response.body);
+        final mediaJson = decoded is Map<String, dynamic> ? decoded['media'] : null;
+        if (mediaJson is Map<String, dynamic>) {
+          final updated = Media.fromJson(mediaJson);
+          final index = _mediaList.indexWhere((m) => m.id == id);
+          if (index != -1) {
+            _mediaList[index] = updated;
+          }
+          notifyListeners();
+        } else {
+          await fetchMedia();
+        }
+      } else {
+        throw Exception(_extractError(response.body, 'Update failed'));
+      }
+    } catch (e) {
+      _error = e.toString();
+      rethrow;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
   }
 

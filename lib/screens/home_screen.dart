@@ -1,7 +1,7 @@
 import 'dart:async';
+import 'dart:math' as math;
 import 'dart:ui';
 
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -9,6 +9,8 @@ import '../models/media.dart';
 import '../providers/auth_provider.dart';
 import '../providers/media_provider.dart';
 import '../providers/response_provider.dart';
+import '../config/company_info.dart';
+import '../widgets/app_network_image.dart';
 import 'admin/admin_dashboard.dart';
 import 'media_detail_screen.dart';
 import 'story_view_screen.dart';
@@ -88,8 +90,8 @@ class _HomeScreenState extends State<HomeScreen>
     super.initState();
     _backgroundController = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 9),
-    )..repeat(reverse: true);
+      duration: const Duration(seconds: 20),
+    )..repeat();
     _loadMedia();
     _startAdTimer();
   }
@@ -102,8 +104,6 @@ class _HomeScreenState extends State<HomeScreen>
     final user = Provider.of<AuthProvider>(context).user;
     if (user == null) return;
 
-    if (_nameController.text.isEmpty) _nameController.text = user.username;
-    if (_emailController.text.isEmpty) _emailController.text = user.email;
     if (_supportNameController.text.isEmpty) {
       _supportNameController.text = user.username;
     }
@@ -657,7 +657,8 @@ class _HomeScreenState extends State<HomeScreen>
                         const SizedBox(height: 28),
                         _buildPortfolio(mediaList, mediaProvider.isLoading),
                         const SizedBox(height: 28),
-                        _buildContactForm(authProvider),
+                        _buildFooter(),
+                        const SizedBox(height: 10),
                       ],
                     ),
                   ),
@@ -736,7 +737,6 @@ class _HomeScreenState extends State<HomeScreen>
               );
             },
           ),
-        _AppIconButton(icon: Icons.mail_outline, onPressed: _scrollToContact),
         if (!authProvider.isAuthenticated)
           _AppIconButton(
             icon: Icons.login,
@@ -757,35 +757,67 @@ class _HomeScreenState extends State<HomeScreen>
       animation: _backgroundController,
       builder: (context, child) {
         final value = _backgroundController.value;
+        final phase = value * 2 * math.pi;
         final light = _useLightTheme;
+        final driftX = math.sin(phase) * 0.38;
+        final driftY = math.cos(phase * 0.92) * 0.34;
+        final begin = Alignment(-1.0 + driftX, -1.0 + driftY);
+        final end = Alignment(1.0 - driftX, 1.0 - driftY);
+
+        final cMixA = 0.5 + 0.5 * math.sin(phase * 0.55);
+        final cMixB = 0.5 + 0.5 * math.cos(phase * 0.62);
+
+        final gradientColors = light
+            ? [
+                Color.lerp(
+                  const Color(0xFFFFFFFF),
+                  const Color(0xFFFFF6F7),
+                  cMixA,
+                )!,
+                Color.lerp(
+                  const Color(0xFFFFEEF0),
+                  const Color(0xFFFFE2E6),
+                  cMixB,
+                )!,
+                Color.lerp(
+                  const Color(0xFFF4F4F4),
+                  const Color(0xFFFFFFFF),
+                  cMixA,
+                )!,
+              ]
+            : [
+                Color.lerp(
+                  const Color(0xFF060606),
+                  const Color(0xFF090909),
+                  cMixA,
+                )!,
+                Color.lerp(
+                  const Color(0xFF210306),
+                  const Color(0xFF2B050A),
+                  cMixB,
+                )!,
+                Color.lerp(
+                  const Color(0xFF0B0B0B),
+                  const Color(0xFF050505),
+                  cMixA,
+                )!,
+              ];
+
         return Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
-              begin: Alignment.lerp(
-                Alignment.topLeft,
-                Alignment.centerLeft,
-                value,
-              )!,
-              end: Alignment.lerp(
-                Alignment.bottomRight,
-                Alignment.centerRight,
-                value,
-              )!,
-              colors: light
-                  ? const [
-                      Color(0xFFFFFFFF),
-                      Color(0xFFFFEEF0),
-                      Color(0xFFF4F4F4),
-                    ]
-                  : const [
-                      Color(0xFF060606),
-                      Color(0xFF210306),
-                      Color(0xFF0B0B0B),
-                    ],
+              begin: begin,
+              end: end,
+              colors: gradientColors,
             ),
           ),
           child: Stack(
             children: [
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: _buildBackgroundBlobs(light: light, phase: phase),
+                ),
+              ),
               Positioned.fill(
                 child: Opacity(
                   opacity: 0.16 + (value * 0.08),
@@ -805,27 +837,81 @@ class _HomeScreenState extends State<HomeScreen>
                   ),
                 ),
               ),
-              Positioned(
-                left: -140 + (value * 180),
-                right: -80,
-                top: 145,
-                child: Transform.rotate(
-                  angle: -0.08,
-                  child: Container(
-                    height: 110,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.035),
-                      border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.08),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
             ],
           ),
         );
       },
+    );
+  }
+
+  Widget _buildBackgroundBlobs({required bool light, required double phase}) {
+    final red = const Color(0xFFE50914);
+    final white = Colors.white;
+    final a1 = 0.06 + (0.02 * (0.5 + 0.5 * math.sin(phase * 0.9)));
+    final a2 = 0.05 + (0.02 * (0.5 + 0.5 * math.cos(phase * 0.75)));
+
+    Widget blob({
+      required double size,
+      required double left,
+      required double top,
+      required Color color,
+      required double alpha,
+      required double blur,
+    }) {
+      return Positioned(
+        left: left,
+        top: top,
+        child: ImageFiltered(
+          imageFilter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
+          child: SizedBox(
+            width: size,
+            height: size,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(
+                  colors: [
+                    color.withValues(alpha: alpha),
+                    Colors.transparent,
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return ClipRect(
+      child: Stack(
+        children: [
+          blob(
+            size: 620,
+            left: -260 + (math.sin(phase * 0.55) * 160),
+            top: -320 + (math.cos(phase * 0.48) * 190),
+            color: red,
+            alpha: light ? a1 : (a1 + 0.02),
+            blur: 54,
+          ),
+          blob(
+            size: 560,
+            left: 420 + (math.cos(phase * 0.44) * 220),
+            top: 260 + (math.sin(phase * 0.52) * 200),
+            color: red,
+            alpha: light ? (a2 + 0.01) : (a2 + 0.03),
+            blur: 50,
+          ),
+          if (!light)
+            blob(
+              size: 480,
+              left: 120 + (math.sin(phase * 0.38) * 210),
+              top: 520 + (math.cos(phase * 0.41) * 180),
+              color: white,
+              alpha: 0.04 + (0.02 * (0.5 + 0.5 * math.sin(phase * 0.7))),
+              blur: 44,
+            ),
+        ],
+      ),
     );
   }
 
@@ -933,7 +1019,8 @@ class _HomeScreenState extends State<HomeScreen>
                 final media = stories[index];
                 return _DailyStoryCircle(
                   label: media.title,
-                  imageUrl: media.thumbnail ?? media.url,
+                  imageUrl:
+                      media.isVideo ? media.thumbnail : (media.thumbnail ?? media.url),
                   icon: media.isVideo ? Icons.play_arrow : Icons.image_outlined,
                   borderColor: const Color(0xFFE50914),
                   textColor: _primaryText,
@@ -1187,6 +1274,139 @@ class _HomeScreenState extends State<HomeScreen>
                     ),
         ),
       ],
+    );
+  }
+
+  Widget _buildFooter() {
+    final isLight = _useLightTheme;
+    final valueStyle = TextStyle(
+      color: isLight ? Colors.black87 : Colors.white.withValues(alpha: 0.86),
+      fontSize: 12,
+      height: 1.35,
+    );
+
+    Widget item(IconData icon, String label, String value) {
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              color: const Color(0xFFE50914).withValues(alpha: 0.18),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: const Color(0xFFE50914)),
+            ),
+            child: Icon(icon, color: Colors.white, size: 18),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: isLight
+                        ? Colors.black.withValues(alpha: 0.72)
+                        : Colors.white.withValues(alpha: 0.72),
+                    fontWeight: FontWeight.w800,
+                    fontSize: 12,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                SelectableText(value, style: valueStyle),
+              ],
+            ),
+          ),
+        ],
+      );
+    }
+
+    return _GlassPanel(
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _SectionTitle(
+            _copy('بيانات الشركة', 'Company Info'),
+            _copy('السجلات والتواصل', 'Records & Contact'),
+          ),
+          const SizedBox(height: 14),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final isWide = constraints.maxWidth > 880;
+              final items = <Widget>[
+                item(
+                  Icons.badge_outlined,
+                  _copy('السجل التجاري', 'Commercial register'),
+                  CompanyInfo.commercialRegister,
+                ),
+                item(
+                  Icons.verified_outlined,
+                  _copy('الرقم الضريبي', 'Tax number'),
+                  CompanyInfo.taxNumber,
+                ),
+                item(
+                  Icons.location_on_outlined,
+                  _copy('العنوان', 'Address'),
+                  _copy(CompanyInfo.addressAr, CompanyInfo.addressEn),
+                ),
+                item(
+                  Icons.phone_outlined,
+                  _copy('الهاتف', 'Phone'),
+                  CompanyInfo.phone,
+                ),
+                item(
+                  Icons.email_outlined,
+                  _copy('البريد', 'Email'),
+                  CompanyInfo.email,
+                ),
+                item(
+                  Icons.public_outlined,
+                  _copy('الموقع', 'Website'),
+                  CompanyInfo.website,
+                ),
+                item(
+                  Icons.chat_outlined,
+                  _copy('واتساب', 'WhatsApp'),
+                  CompanyInfo.whatsapp,
+                ),
+              ];
+
+              return Wrap(
+                runSpacing: 14,
+                spacing: 18,
+                children: [
+                  for (final child in items)
+                    SizedBox(
+                      width: isWide
+                          ? (constraints.maxWidth / 3) - 18
+                          : constraints.maxWidth,
+                      child: child,
+                    ),
+                ],
+              );
+            },
+          ),
+          const SizedBox(height: 16),
+          Container(
+            height: 1,
+            width: double.infinity,
+            color: Colors.white.withValues(alpha: isLight ? 0.35 : 0.10),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            '© ${DateTime.now().year} ${CompanyInfo.nameEn}',
+            style: TextStyle(
+              color: isLight
+                  ? Colors.black.withValues(alpha: 0.55)
+                  : Colors.white.withValues(alpha: 0.55),
+              fontSize: 12,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -1538,6 +1758,25 @@ class _DailyStoryCircle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    Widget fallback() {
+      return DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Colors.black.withValues(alpha: 0.72),
+              const Color(0xFFE50914).withValues(alpha: 0.18),
+              Colors.black.withValues(alpha: 0.85),
+            ],
+          ),
+        ),
+        child: Center(
+          child: Icon(icon, color: Colors.white.withValues(alpha: 0.92), size: 26),
+        ),
+      );
+    }
+
     return InkWell(
       borderRadius: BorderRadius.circular(48),
       onTap: onTap,
@@ -1555,20 +1794,15 @@ class _DailyStoryCircle extends StatelessWidget {
               ),
               child: ClipOval(
                 child: imageUrl == null
-                    ? ColoredBox(
-                        color: Colors.black.withValues(alpha: 0.45),
-                        child: Icon(icon, color: Colors.white, size: 27),
-                      )
+                    ? fallback()
                     : Stack(
                         fit: StackFit.expand,
                         children: [
-                          CachedNetworkImage(
-                            imageUrl: imageUrl!,
+                          AppNetworkImage(
+                            url: imageUrl!,
                             fit: BoxFit.cover,
-                            placeholder: (_, __) =>
-                                Container(color: Colors.black12),
-                            errorWidget: (_, __, ___) =>
-                                Container(color: Colors.black12),
+                            placeholder: fallback(),
+                            errorWidget: fallback(),
                           ),
                           Align(
                             alignment: Alignment.bottomRight,
@@ -1699,11 +1933,11 @@ class _AdBanner extends StatelessWidget {
         fit: StackFit.expand,
         children: [
           if (media?.thumbnail != null || media?.url != null)
-            CachedNetworkImage(
-              imageUrl: media?.thumbnail ?? media!.url,
+            AppNetworkImage(
+              url: media?.thumbnail ?? media!.url,
               fit: BoxFit.cover,
-              placeholder: (_, __) => _fallbackBackground(),
-              errorWidget: (_, __, ___) => _fallbackBackground(),
+              placeholder: _fallbackBackground(),
+              errorWidget: _fallbackBackground(),
             )
           else
             _fallbackBackground(),
@@ -1813,13 +2047,16 @@ class _MediaPreview extends StatelessWidget {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              CachedNetworkImage(
-                imageUrl: media.thumbnail ?? media.url,
+              AppNetworkImage(
+                url: media.thumbnail ?? media.url,
                 fit: BoxFit.cover,
-                placeholder: (_, __) => Container(color: Colors.white10),
-                errorWidget: (_, __, ___) => Container(
+                placeholder: Container(color: Colors.white10),
+                errorWidget: Container(
                   color: Colors.white10,
-                  child: const Icon(Icons.broken_image_outlined, color: Colors.white),
+                  child: const Icon(
+                    Icons.broken_image_outlined,
+                    color: Colors.white,
+                  ),
                 ),
               ),
               DecoratedBox(

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../config/app_config.dart';
 import '../models/user.dart';
 
 class AuthProvider with ChangeNotifier {
@@ -15,8 +16,7 @@ class AuthProvider with ChangeNotifier {
   bool get isAuthenticated => _token != null && _token!.isNotEmpty;
   bool get isAdmin => _user?.isAdmin ?? false;
 
-  final String _baseUrl =
-      'http://192.168.8.219:6019/api'; // Use your IP for physical device
+  String get _baseUrl => AppConfig.apiBaseUrl;
 
   Future<void> login(String email, String password) async {
     _isLoading = true;

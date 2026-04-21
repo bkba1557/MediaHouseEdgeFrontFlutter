@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../config/app_config.dart';
 import '../models/response.dart';
 
 class ResponseProvider with ChangeNotifier {
@@ -10,7 +11,7 @@ class ResponseProvider with ChangeNotifier {
   List<ClientResponse> get responses => _responses;
   bool get isLoading => _isLoading;
 
-  final String _baseUrl = 'http://10.0.2.2:5000/api';
+  String get _baseUrl => AppConfig.apiBaseUrl;
 
   Future<void> submitResponse({
     required String clientName,

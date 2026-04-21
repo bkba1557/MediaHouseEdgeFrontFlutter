@@ -2,14 +2,36 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 
 class AppFirebaseOptions {
-  static const apiKey = String.fromEnvironment('FIREBASE_API_KEY');
-  static const appId = String.fromEnvironment('FIREBASE_APP_ID');
+  // Defaults are safe to embed for web apps (Firebase web config is not a secret).
+  // You can still override any value via `--dart-define`.
+  static const apiKey = String.fromEnvironment(
+    'FIREBASE_API_KEY',
+    defaultValue: 'AIzaSyAxdejfGHRngtgBZsI3TZLu2PB7FRYWwm0',
+  );
+  static const appId = String.fromEnvironment(
+    'FIREBASE_APP_ID',
+    defaultValue: '1:843078322062:web:13eeda6eeb3e36dcb686df',
+  );
   static const messagingSenderId = String.fromEnvironment(
     'FIREBASE_MESSAGING_SENDER_ID',
+    defaultValue: '843078322062',
   );
-  static const projectId = String.fromEnvironment('FIREBASE_PROJECT_ID');
-  static const storageBucket = String.fromEnvironment('FIREBASE_STORAGE_BUCKET');
-  static const authDomain = String.fromEnvironment('FIREBASE_AUTH_DOMAIN');
+  static const projectId = String.fromEnvironment(
+    'FIREBASE_PROJECT_ID',
+    defaultValue: 'albuhairaalarabia2026',
+  );
+  static const storageBucket = String.fromEnvironment(
+    'FIREBASE_STORAGE_BUCKET',
+    defaultValue: 'albuhairaalarabia2026.firebasestorage.app',
+  );
+  static const authDomain = String.fromEnvironment(
+    'FIREBASE_AUTH_DOMAIN',
+    defaultValue: 'albuhairaalarabia2026.firebaseapp.com',
+  );
+  static const measurementId = String.fromEnvironment(
+    'FIREBASE_MEASUREMENT_ID',
+    defaultValue: 'G-PXKW92DMB2',
+  );
   static const iosBundleId = String.fromEnvironment('FIREBASE_IOS_BUNDLE_ID');
 
   static bool get isConfigured {
@@ -30,17 +52,18 @@ class AppFirebaseOptions {
     }
 
     if (kIsWeb) {
-      return const FirebaseOptions(
+      return FirebaseOptions(
         apiKey: apiKey,
         appId: appId,
         messagingSenderId: messagingSenderId,
         projectId: projectId,
         storageBucket: storageBucket,
         authDomain: authDomain,
+        measurementId: measurementId,
       );
     }
 
-    return const FirebaseOptions(
+    return FirebaseOptions(
       apiKey: apiKey,
       appId: appId,
       messagingSenderId: messagingSenderId,

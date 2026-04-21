@@ -1,8 +1,9 @@
 ﻿import 'package:flutter/material.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import '../models/media.dart';
+import '../screens/image_viewer_screen.dart';
 import '../screens/media_detail_screen.dart';
 import '../utils/responsive.dart';
+import 'app_network_image.dart';
 
 class MediaGrid extends StatelessWidget {
   final List<Media> mediaList;
@@ -26,8 +27,24 @@ class MediaGrid extends StatelessWidget {
       itemCount: mediaList.length,
       itemBuilder: (context, index) {
         final media = mediaList[index];
+        final imageItems = mediaList.where((item) => item.isImage).toList();
+        final initialImageIndex = imageItems.indexWhere((item) => item.id == media.id);
         return GestureDetector(
           onTap: () {
+            if (media.isImage && initialImageIndex != -1) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ImageViewerScreen(
+                    urls: imageItems.map((e) => e.url).toList(),
+                    titles: imageItems.map((e) => e.title).toList(),
+                    initialIndex: initialImageIndex,
+                  ),
+                ),
+              );
+              return;
+            }
+
             Navigator.push(
               context,
               MaterialPageRoute(
@@ -62,27 +79,25 @@ class MediaGrid extends StatelessWidget {
                                 ),
                               ),
                               Positioned.fill(
-                                child: CachedNetworkImage(
-                                  imageUrl: media.thumbnail ?? media.url,
+                                child: AppNetworkImage(
+                                  url: media.thumbnail ?? media.url,
                                   fit: BoxFit.cover,
-                                  placeholder: (context, url) => const Center(
+                                  placeholder: const Center(
                                     child: CircularProgressIndicator(),
                                   ),
-                                  errorWidget: (context, url, error) =>
-                                      const Icon(Icons.error),
+                                  errorWidget: const Icon(Icons.error),
                                 ),
                               ),
                             ],
                           )
-                        : CachedNetworkImage(
-                            imageUrl: media.url,
+                        : AppNetworkImage(
+                            url: media.url,
                             fit: BoxFit.cover,
                             width: double.infinity,
-                            placeholder: (context, url) => const Center(
+                            placeholder: const Center(
                               child: CircularProgressIndicator(),
                             ),
-                            errorWidget: (context, url, error) =>
-                                const Icon(Icons.error),
+                            errorWidget: const Icon(Icons.error),
                           ),
                   ),
                 ),
