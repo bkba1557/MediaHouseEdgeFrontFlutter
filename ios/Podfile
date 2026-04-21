@@ -4,6 +4,11 @@ platform :ios, '15.0'
 # CocoaPods analytics sends network stats synchronously affecting flutter build latency.
 ENV['COCOAPODS_DISABLE_STATS'] = 'true'
 
+# Some Swift pods (e.g. Firebase) depend on pods that don't define modules by default.
+# Enabling modular headers generates module maps so they can be integrated when CocoaPods
+# builds pods as static libraries.
+use_modular_headers!
+
 project 'Runner', {
   'Debug' => :debug,
   'Profile' => :release,
