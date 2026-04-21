@@ -34,12 +34,6 @@ workflows:
         script: |
           keychain initialize
 
-      - name: Fetch signing files
-        script: |
-          app-store-connect fetch-signing-files "$BUNDLE_ID" \
-            --type IOS_APP_STORE \
-            --create
-
       - name: Set up code signing
         script: |
           xcode-project use-profiles
@@ -66,7 +60,7 @@ workflows:
           flutter build ipa \
             --release \
             --build-number="$IOS_BUILD_NUMBER" \
-            --export-method=app-store
+            --export-options-plist=/Users/builder/export_options.plist
 
     artifacts:
       - build/ios/ipa/*.ipa
