@@ -11,38 +11,18 @@ workflows:
       flutter: stable
       xcode: latest
       cocoapods: default
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.mediahouse.edge
       vars:
         BUNDLE_ID: com.mediahouse.edge
         # App Store Connect -> App -> General -> App Information -> Apple ID
         APP_STORE_APPLE_ID: 6762801853
-        # IMPORTANT: Set this as a secure environment variable in Codemagic UI.
-        # Generate once (RSA 2048) and reuse it to avoid creating new certificates every build.
-        # Example generation (run locally): `ssh-keygen -t rsa -b 2048 -f codemagic_cert_key -q -N ""`
-        # Then paste the contents of the generated key file into `CERTIFICATE_PRIVATE_KEY` in Codemagic.
     scripts:
       - name: Pub get
         script: flutter pub get
       - name: CocoaPods install
         script: cd ios && pod install
-      - name: Set up keychain
-        script: keychain initialize
-      - name: Fetch signing files (App Store / TestFlight)
-        script: |
-          if [ -z "${CERTIFICATE_PRIVATE_KEY:-}" ]; then
-            echo "Missing required secret env var: CERTIFICATE_PRIVATE_KEY"
-            echo "Add it in Codemagic UI (Environment variables) as a Secure variable, then re-run the build."
-            exit 1
-          fi
-
-          CERT_KEY_PATH="$CM_BUILD_DIR/codemagic_cert_key"
-          printf "%s" "$CERTIFICATE_PRIVATE_KEY" > "$CERT_KEY_PATH"
-
-          app-store-connect fetch-signing-files "$BUNDLE_ID" \
-            --type IOS_APP_STORE \
-            --create \
-            --certificate-key @file:$CERT_KEY_PATH
-      - name: Import certificates
-        script: keychain add-certificates
       - name: Set up code signing settings
         script: xcode-project use-profiles
       - name: Set build number
