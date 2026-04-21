@@ -3,50 +3,59 @@ workflows:
     name: iOS TestFlight
     max_build_duration: 120
     instance_type: mac_mini_m2
+
     integrations:
-      # Set this in Codemagic UI: Team integrations -> App Store Connect
-      # and use the same "API key name" here.
       app_store_connect: MediaHouseEdge
+
     environment:
       flutter: stable
       xcode: latest
       cocoapods: default
+
       ios_signing:
         distribution_type: app_store
         bundle_identifier: com.mediahouse.edge
+
       vars:
         BUNDLE_ID: com.mediahouse.edge
-        # App Store Connect -> App -> General -> App Information -> Apple ID
         APP_STORE_APPLE_ID: 6762801853
+
     scripts:
-      - name: Pub get
-        script: flutter pub get
-      - name: CocoaPods install
-        script: cd ios && pod install
-      - name: Set up code signing settings
-        script: xcode-project use-profiles
+      - name: Flutter pub get
+        script: |
+          flutter pub get
+
+      - name: Install CocoaPods
+        script: |
+          cd ios
+          pod install
+
+      - name: Set up code signing
+        script: |
+          xcode-project use-profiles
+
       - name: Set build number
         script: |
-          # Try to keep build numbers in sync with TestFlight/App Store Connect.
-          # If this is the very first upload, fallback to Codemagic's PROJECT_BUILD_NUMBER.
           LATEST_BUILD_NUMBER=$(app-store-connect get-latest-testflight-build-number "$APP_STORE_APPLE_ID" 2>/dev/null || true)
+
           if [ -z "$LATEST_BUILD_NUMBER" ]; then
             IOS_BUILD_NUMBER="$PROJECT_BUILD_NUMBER"
           else
-            IOS_BUILD_NUMBER=$(($LATEST_BUILD_NUMBER + 1))
+            IOS_BUILD_NUMBER=$((LATEST_BUILD_NUMBER + 1))
           fi
+
           echo "IOS_BUILD_NUMBER=$IOS_BUILD_NUMBER" >> "$CM_ENV"
+
       - name: Build IPA
-        script: flutter build ipa --release --build-number=$IOS_BUILD_NUMBER
+        script: |
+          flutter build ipa --release --build-number="$IOS_BUILD_NUMBER"
+
     artifacts:
       - build/ios/ipa/*.ipa
       - build/ios/ipa/*.dSYM.zip
+
     publishing:
       app_store_connect:
         auth: integration
-        # If you only want internal testing, set this to false and distribute via beta_groups.
         submit_to_testflight: true
-        # Optional: automatically distribute to these TestFlight groups
-        # beta_groups:
-        #   - Internal Testers
         submit_to_app_store: false
