@@ -28,10 +28,19 @@ workflows:
         script: keychain initialize
       - name: Fetch signing files (App Store / TestFlight)
         script: |
+          if [ -z "${CERTIFICATE_PRIVATE_KEY:-}" ]; then
+            echo "Missing required secret env var: CERTIFICATE_PRIVATE_KEY"
+            echo "Add it in Codemagic UI (Environment variables) as a Secure variable, then re-run the build."
+            exit 1
+          fi
+
+          CERT_KEY_PATH="$CM_BUILD_DIR/codemagic_cert_key"
+          printf "%s" "$CERTIFICATE_PRIVATE_KEY" > "$CERT_KEY_PATH"
+
           app-store-connect fetch-signing-files "$BUNDLE_ID" \
             --type IOS_APP_STORE \
             --create \
-            --certificate-key @env:CERTIFICATE_PRIVATE_KEY
+            --certificate-key @file:$CERT_KEY_PATH
       - name: Import certificates
         script: keychain add-certificates
       - name: Set up code signing settings
