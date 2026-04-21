@@ -6,7 +6,7 @@ workflows:
     integrations:
       # Set this in Codemagic UI: Team integrations -> App Store Connect
       # and use the same "API key name" here.
-      app_store_connect: codemagic
+      app_store_connect: MediaHouseEdge
     environment:
       flutter: stable
       xcode: latest
