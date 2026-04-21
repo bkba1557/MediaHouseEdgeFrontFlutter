@@ -30,10 +30,6 @@ workflows:
           cd ios
           pod install
 
-      - name: Initialize keychain
-        script: |
-          keychain initialize
-
       - name: Set up code signing
         script: |
           xcode-project use-profiles
