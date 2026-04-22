@@ -1,6 +1,7 @@
 ﻿import 'package:flutter/material.dart';
 import '../models/media.dart';
 import '../widgets/app_network_image.dart';
+import '../widgets/app_video_player.dart';
 import 'dart:math' as math;
 
 class MediaDetailScreen extends StatelessWidget {
@@ -21,10 +22,14 @@ class MediaDetailScreen extends StatelessWidget {
         children: [
           if (media.isVideo)
             SizedBox(
-              height: math.min(260, size.height * 0.35),
-              child: const ColoredBox(
-                color: Colors.black12,
-                child: Center(child: Icon(Icons.play_arrow, size: 64)),
+              height: math.min(320, size.height * 0.42),
+              child: ColoredBox(
+                color: Colors.black,
+                child: AppVideoPlayer(
+                  url: Uri.parse(media.url),
+                  autoPlay: false,
+                  looping: false,
+                ),
               ),
             )
           else
@@ -56,6 +61,71 @@ class MediaDetailScreen extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Text('Views: ${media.views}', style: const TextStyle(fontSize: 14)),
           ),
+          if (media.crew.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16),
+              child: Text(
+                'Crew / فريق العمل',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
+              ),
+            ),
+            const SizedBox(height: 10),
+            SizedBox(
+              height: 112,
+              child: ListView.separated(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                scrollDirection: Axis.horizontal,
+                itemCount: media.crew.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 12),
+                itemBuilder: (context, index) {
+                  final member = media.crew[index];
+                  return SizedBox(
+                    width: 96,
+                    child: Column(
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(999),
+                          child: SizedBox(
+                            width: 64,
+                            height: 64,
+                            child: member.photoUrl.trim().isEmpty
+                                ? const ColoredBox(color: Colors.white10)
+                                : AppNetworkImage(
+                                    url: member.photoUrl,
+                                    fit: BoxFit.cover,
+                                    placeholder:
+                                        const ColoredBox(color: Colors.white10),
+                                    errorWidget:
+                                        const ColoredBox(color: Colors.white10),
+                                  ),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          member.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(fontWeight: FontWeight.w800),
+                        ),
+                        Text(
+                          member.role,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
           const SizedBox(height: 20),
         ],
       ),

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:video_player/video_player.dart';
 
 import '../models/media.dart';
 import '../widgets/app_network_image.dart';
+import '../widgets/app_video_player.dart';
 
 class StoryViewScreen extends StatefulWidget {
   final Media media;
@@ -14,25 +14,6 @@ class StoryViewScreen extends StatefulWidget {
 }
 
 class _StoryViewScreenState extends State<StoryViewScreen> {
-  VideoPlayerController? _videoController;
-  bool _isVideoReady = false;
-
-  @override
-  void initState() {
-    super.initState();
-    if (widget.media.isVideo) {
-      _videoController = VideoPlayerController.networkUrl(
-        Uri.parse(widget.media.url),
-      )..initialize().then((_) {
-          if (!mounted) return;
-          setState(() => _isVideoReady = true);
-          _videoController
-            ?..setLooping(true)
-            ..play();
-        });
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -89,16 +70,11 @@ class _StoryViewScreenState extends State<StoryViewScreen> {
 
   Widget _buildStoryMedia() {
     if (widget.media.isVideo) {
-      if (!_isVideoReady || _videoController == null) {
-        return const Center(
-          child: CircularProgressIndicator(color: Color(0xFFE50914)),
-        );
-      }
-
       return Center(
-        child: AspectRatio(
-          aspectRatio: _videoController!.value.aspectRatio,
-          child: VideoPlayer(_videoController!),
+        child: AppVideoPlayer(
+          url: Uri.parse(widget.media.url),
+          autoPlay: true,
+          looping: true,
         ),
       );
     }
@@ -121,9 +97,5 @@ class _StoryViewScreenState extends State<StoryViewScreen> {
     );
   }
 
-  @override
-  void dispose() {
-    _videoController?.dispose();
-    super.dispose();
-  }
+
 }

@@ -81,24 +81,26 @@ class _AdminResponsesScreenState extends State<AdminResponsesScreen> {
   @override
   Widget build(BuildContext context) {
     final responseProvider = Provider.of<ResponseProvider>(context);
+    final responses = responseProvider.responses
+        .where((r) => r.serviceCategory == null)
+        .toList(growable: false);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Client Responses'),
-        backgroundColor: const Color(0xFFE50914),
-      ),
-      body: responseProvider.isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : responseProvider.responses.isEmpty
-          ? const Center(child: Text('No responses yet'))
-          : ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: responseProvider.responses.length,
-              itemBuilder: (context, index) {
-                final response = responseProvider.responses[index];
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 16),
-                  child: ExpansionTile(
+    if (responseProvider.isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (responses.isEmpty) {
+      return const Center(child: Text('No responses yet'));
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
+      itemCount: responses.length,
+      itemBuilder: (context, index) {
+        final response = responses[index];
+        return Card(
+          margin: const EdgeInsets.only(bottom: 16),
+          child: ExpansionTile(
                     leading: CircleAvatar(
                       backgroundColor: response.status == 'pending'
                           ? Colors.orange
@@ -175,8 +177,7 @@ class _AdminResponsesScreenState extends State<AdminResponsesScreen> {
                     ],
                   ),
                 );
-              },
-            ),
+      },
     );
   }
 }

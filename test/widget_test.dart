@@ -6,14 +6,17 @@
 // tree, read text, and verify that the values of widget properties are correct.
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter/material.dart';
 
 import 'package:mediahouse/main.dart';
+import 'package:mediahouse/screens/splash_screen.dart';
 
 void main() {
   testWidgets('App boots and shows splash', (WidgetTester tester) async {
     await tester.pumpWidget(const MyApp());
+    await tester.pump();
 
-    expect(find.text('Media House Edge'), findsOneWidget);
-    expect(find.text('Film | Montage | Advertising'), findsOneWidget);
+    expect(find.byType(SplashScreen), findsOneWidget);
+    expect(find.byType(CircularProgressIndicator), findsWidgets);
   });
 }

@@ -13,7 +13,10 @@ import '../config/company_info.dart';
 import '../widgets/app_network_image.dart';
 import 'admin/admin_dashboard.dart';
 import 'media_detail_screen.dart';
+import 'service_feed_screen.dart';
+import 'series_folders_screen.dart';
 import 'story_view_screen.dart';
+import 'video_player_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -58,14 +61,61 @@ class _HomeScreenState extends State<HomeScreen>
     _StoryCategory('all', 'الكل', Icons.auto_awesome),
     _StoryCategory('film', 'تصوير', Icons.movie_creation_outlined),
     _StoryCategory('montage', 'مونتاج', Icons.content_cut),
-    _StoryCategory('advertisement', 'إعلانات', Icons.campaign_outlined),
+    _StoryCategory('advertisement', 'إعلانات تجارية', Icons.campaign_outlined),
   ];
 
   final List<_ServiceItem> _services = const [
-    _ServiceItem('إنتاج فيديو', 'تصوير وإخراج بمظهر سينمائي', Icons.videocam_outlined),
-    _ServiceItem('مونتاج', 'قص، تلوين، ومؤثرات خفيفة', Icons.tune_outlined),
-    _ServiceItem('إعلانات', 'بانرات وحملات للسوشيال ميديا', Icons.ads_click_outlined),
-    _ServiceItem('هوية بصرية', 'تصميم محتوى ثابت ومتحرك', Icons.palette_outlined),
+    _ServiceItem('مسلسلات وافلام', 'تلفزيونية ومنصات', Icons.tv_sharp),
+    _ServiceItem('تصوير إعلانات', 'تجارية ودعائية', Icons.videocam_outlined),
+    _ServiceItem('بودكاست ', 'برامج صوتية متنوعة', Icons.podcasts_outlined),
+    _ServiceItem('فديو كليب', 'فيديوهات غنائية', Icons.music_video_outlined),
+    _ServiceItem('إنتاج فني', 'تصميم وإنتاج عمل فني', Icons.attach_file),
+    _ServiceItem(
+      'إنتاج وتوزيع المنصات',
+      ' بيع وتوزيع وتسويق الاعمال بالمنصات',
+      Icons.money_outlined,
+    ),
+    _ServiceItem('مونتاج', 'VFX , Color Correction , Visual Effects', Icons.tune_outlined),
+    _ServiceItem(
+      'إعلانات تجارية',
+      'تلفزيونية وسوشيال ميديا وغيرها',
+      Icons.ads_click_outlined,
+    ),
+    _ServiceItem(
+      'حفلات عالمية',
+      ' تغطية حفلات ومهرجانات عالمية',
+      Icons.public_outlined,
+    ),
+    _ServiceItem(
+      'تغطية إعلامية',
+      'تغطية إعلامية للأحداث والفعاليات',
+      Icons.mic_external_on_outlined,
+    ),
+    _ServiceItem(
+      'تسجيلات صوتية',
+      ' تسجيل صوتي بجودة عالية للاستوديوهات والمنتجين',
+      Icons.mic_external_on_outlined,
+    ),
+    _ServiceItem(
+      'إعلانات بشراكة حكومية',
+      ' إنتاج إعلانات بالتعاون مع جهات حكومية',
+      Icons.handshake_outlined,
+    ),
+  ];
+
+  final List<String> _serviceKeys = const [
+    'series_movies',
+    'ads_shooting',
+    'podcast',
+    'video_clip',
+    'art_production',
+    'platform_distribution',
+    'montage',
+    'commercial_ads',
+    'global_events',
+    'media_coverage',
+    'audio_recordings',
+    'gov_partnership_ads',
   ];
 
   TextDirection get _textDirection =>
@@ -80,8 +130,9 @@ class _HomeScreenState extends State<HomeScreen>
 
   Color get _pageBackground => _useLightTheme ? Colors.white : Colors.black;
   Color get _primaryText => _useLightTheme ? Colors.black : Colors.white;
-  Color get _glassBorder =>
-      _useLightTheme ? Colors.black.withValues(alpha: 0.10) : Colors.white.withValues(alpha: 0.12);
+  Color get _glassBorder => _useLightTheme
+      ? Colors.black.withValues(alpha: 0.10)
+      : Colors.white.withValues(alpha: 0.12);
 
   String _copy(String ar, String en) => _isArabic ? ar : en;
 
@@ -149,7 +200,10 @@ class _HomeScreenState extends State<HomeScreen>
 
     setState(() => _isSending = true);
     try {
-      await Provider.of<ResponseProvider>(context, listen: false).submitResponse(
+      await Provider.of<ResponseProvider>(
+        context,
+        listen: false,
+      ).submitResponse(
         clientName: _nameController.text.trim(),
         clientEmail: _emailController.text.trim(),
         message: _messageController.text.trim(),
@@ -160,14 +214,14 @@ class _HomeScreenState extends State<HomeScreen>
       _emailController.clear();
       _messageController.clear();
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تم إرسال رسالتك بنجاح')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('تم إرسال رسالتك بنجاح')));
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('تعذر الإرسال: $error')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('تعذر الإرسال: $error')));
     } finally {
       if (mounted) setState(() => _isSending = false);
     }
@@ -250,7 +304,10 @@ class _HomeScreenState extends State<HomeScreen>
                     const SizedBox(height: 10),
                     _SupportOptionTile(
                       icon: Icons.mark_unread_chat_alt_outlined,
-                      title: _copy('التحدث مع خدمة العملاء', 'Chat with support'),
+                      title: _copy(
+                        'التحدث مع خدمة العملاء',
+                        'Chat with support',
+                      ),
                       subtitle: _copy(
                         'المساعد الآلي يرد حتى يستلم الدعم المحادثة',
                         'The bot replies until a support agent joins',
@@ -317,7 +374,10 @@ class _HomeScreenState extends State<HomeScreen>
                         keyboardType: TextInputType.emailAddress,
                         validator: (value) {
                           if (value == null || !value.contains('@')) {
-                            return _copy('اكتب بريد صحيح', 'Enter a valid email');
+                            return _copy(
+                              'اكتب بريد صحيح',
+                              'Enter a valid email',
+                            );
                           }
                           return null;
                         },
@@ -347,7 +407,8 @@ class _HomeScreenState extends State<HomeScreen>
                           const SizedBox(width: 10),
                           Expanded(
                             child: ElevatedButton.icon(
-                              onPressed: () => _sendSupportMessage(dialogContext),
+                              onPressed: () =>
+                                  _sendSupportMessage(dialogContext),
                               icon: const Icon(Icons.send_outlined),
                               label: Text(_copy('إرسال', 'Send')),
                             ),
@@ -377,7 +438,10 @@ class _HomeScreenState extends State<HomeScreen>
                 backgroundColor: Colors.transparent,
                 insetPadding: const EdgeInsets.symmetric(horizontal: 14),
                 child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 480, maxHeight: 620),
+                  constraints: const BoxConstraints(
+                    maxWidth: 480,
+                    maxHeight: 620,
+                  ),
                   child: _GlassPanel(
                     padding: const EdgeInsets.all(14),
                     child: Column(
@@ -408,7 +472,8 @@ class _HomeScreenState extends State<HomeScreen>
                           child: ListView.separated(
                             shrinkWrap: true,
                             itemCount: _supportChatMessages.length,
-                            separatorBuilder: (_, __) => const SizedBox(height: 8),
+                            separatorBuilder: (_, __) =>
+                                const SizedBox(height: 8),
                             itemBuilder: (context, index) {
                               final message = _supportChatMessages[index];
                               return _SupportChatBubble(message: message);
@@ -433,7 +498,9 @@ class _HomeScreenState extends State<HomeScreen>
                                     color: _primaryText.withValues(alpha: 0.45),
                                   ),
                                   filled: true,
-                                  fillColor: Colors.black.withValues(alpha: 0.18),
+                                  fillColor: Colors.black.withValues(
+                                    alpha: 0.18,
+                                  ),
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(8),
                                   ),
@@ -445,7 +512,8 @@ class _HomeScreenState extends State<HomeScreen>
                               style: IconButton.styleFrom(
                                 backgroundColor: const Color(0xFFE50914),
                               ),
-                              onPressed: () => _sendSupportChatMessage(setModalState),
+                              onPressed: () =>
+                                  _sendSupportChatMessage(setModalState),
                               icon: const Icon(Icons.send, color: Colors.white),
                             ),
                           ],
@@ -467,7 +535,10 @@ class _HomeScreenState extends State<HomeScreen>
     final navigator = Navigator.of(dialogContext);
 
     try {
-      await Provider.of<ResponseProvider>(context, listen: false).submitResponse(
+      await Provider.of<ResponseProvider>(
+        context,
+        listen: false,
+      ).submitResponse(
         clientName: _supportNameController.text.trim(),
         clientEmail: _supportEmailController.text.trim(),
         message: 'Support message: ${_supportMessageController.text.trim()}',
@@ -506,16 +577,18 @@ class _HomeScreenState extends State<HomeScreen>
       _supportChatController.clear();
     });
 
-    Provider.of<ResponseProvider>(context, listen: false).submitResponse(
-      clientName: _supportNameController.text.trim().isEmpty
-          ? 'Support chat user'
-          : _supportNameController.text.trim(),
-      clientEmail: _supportEmailController.text.trim().contains('@')
-          ? _supportEmailController.text.trim()
-          : 'support-chat@mediahouse.local',
-      message: 'Support chat: $text',
-      rating: 5,
-    ).catchError((_) {});
+    Provider.of<ResponseProvider>(context, listen: false)
+        .submitResponse(
+          clientName: _supportNameController.text.trim().isEmpty
+              ? 'Support chat user'
+              : _supportNameController.text.trim(),
+          clientEmail: _supportEmailController.text.trim().contains('@')
+              ? _supportEmailController.text.trim()
+              : 'support-chat@mediahouse.local',
+          message: 'Support chat: $text',
+          rating: 5,
+        )
+        .catchError((_) {});
   }
 
   void _cycleThemeMode() {
@@ -548,7 +621,9 @@ class _HomeScreenState extends State<HomeScreen>
                     size: 42,
                   ),
                   title: Text(
-                    user?.username.isNotEmpty == true ? user!.username : 'الحساب',
+                    user?.username.isNotEmpty == true
+                        ? user!.username
+                        : 'الحساب',
                     style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.w700,
@@ -597,7 +672,10 @@ class _HomeScreenState extends State<HomeScreen>
         .take(6)
         .toList();
     _syncAdItemCount(adMedia.isEmpty ? 3 : adMedia.length);
-    final videoMedia = mediaList.where((media) => media.isVideo).take(8).toList();
+    final videoMedia = mediaList
+        .where((media) => media.isVideo)
+        .take(8)
+        .toList();
     final dailyStories = mediaList
         .where(
           (media) =>
@@ -616,58 +694,63 @@ class _HomeScreenState extends State<HomeScreen>
           textTheme: Theme.of(context).textTheme.apply(fontFamily: 'Cairo'),
         ),
         child: Scaffold(
-      extendBodyBehindAppBar: true,
-      backgroundColor: _pageBackground,
-      appBar: _buildAppBar(authProvider),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _openSupportDialog,
-        backgroundColor: const Color(0xFFE50914),
-        foregroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        child: const Icon(Icons.support_agent),
-      ),
-      body: Stack(
-        children: [
-          _buildAnimatedBackground(),
-          SafeArea(
-            child: RefreshIndicator(
-              color: const Color(0xFFE50914),
-              onRefresh: () async => _loadMedia(),
-              child: SingleChildScrollView(
-                controller: _scrollController,
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 1180),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildDailyStories(dailyStories),
-                        const SizedBox(height: 18),
-                        _buildTopStrip(),
-                        const SizedBox(height: 18),
-                        _buildStories(),
-                        const SizedBox(height: 22),
-                        _buildAdCarousel(adMedia),
-                        const SizedBox(height: 28),
-                        _buildServices(),
-                        const SizedBox(height: 28),
-                        _buildVideoBackdropArea(videoMedia, mediaProvider.isLoading),
-                        const SizedBox(height: 28),
-                        _buildPortfolio(mediaList, mediaProvider.isLoading),
-                        const SizedBox(height: 28),
-                        _buildFooter(),
-                        const SizedBox(height: 10),
-                      ],
+          extendBodyBehindAppBar: true,
+          backgroundColor: _pageBackground,
+          appBar: _buildAppBar(authProvider),
+          floatingActionButton: FloatingActionButton(
+            onPressed: _openSupportDialog,
+            backgroundColor: const Color(0xFFE50914),
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Icon(Icons.support_agent),
+          ),
+          body: Stack(
+            children: [
+              _buildAnimatedBackground(),
+              SafeArea(
+                child: RefreshIndicator(
+                  color: const Color(0xFFE50914),
+                  onRefresh: () async => _loadMedia(),
+                  child: SingleChildScrollView(
+                    controller: _scrollController,
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 1180),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildDailyStories(dailyStories),
+                            const SizedBox(height: 18),
+                            _buildTopStrip(),
+                            const SizedBox(height: 18),
+                            _buildStories(),
+                            const SizedBox(height: 22),
+                            _buildAdCarousel(adMedia),
+                            const SizedBox(height: 28),
+                            _buildServices(),
+                            const SizedBox(height: 28),
+                            _buildVideoBackdropArea(
+                              videoMedia,
+                              mediaProvider.isLoading,
+                            ),
+                            const SizedBox(height: 28),
+                            _buildPortfolio(mediaList, mediaProvider.isLoading),
+                            const SizedBox(height: 28),
+                            _buildFooter(),
+                            const SizedBox(height: 10),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
+            ],
           ),
-        ],
-      ),
         ),
       ),
     );
@@ -685,11 +768,10 @@ class _HomeScreenState extends State<HomeScreen>
           filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
           child: Container(
             decoration: BoxDecoration(
-              color: (_useLightTheme ? Colors.white : Colors.black)
-                  .withValues(alpha: 0.56),
-              border: Border(
-                bottom: BorderSide(color: _glassBorder),
+              color: (_useLightTheme ? Colors.white : Colors.black).withValues(
+                alpha: 0.56,
               ),
+              border: Border(bottom: BorderSide(color: _glassBorder)),
             ),
           ),
         ),
@@ -723,8 +805,8 @@ class _HomeScreenState extends State<HomeScreen>
           icon: _themeMode == _HomeThemeMode.light
               ? Icons.light_mode_outlined
               : _themeMode == _HomeThemeMode.dark
-                  ? Icons.dark_mode_outlined
-                  : Icons.brightness_auto_outlined,
+              ? Icons.dark_mode_outlined
+              : Icons.brightness_auto_outlined,
           onPressed: _cycleThemeMode,
         ),
         if (authProvider.isAdmin)
@@ -827,8 +909,9 @@ class _HomeScreenState extends State<HomeScreen>
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
                         colors: [
-                          (light ? Colors.black : Colors.white)
-                              .withValues(alpha: 0.08),
+                          (light ? Colors.black : Colors.white).withValues(
+                            alpha: 0.08,
+                          ),
                           Colors.transparent,
                           const Color(0xFFE50914).withValues(alpha: 0.18),
                         ],
@@ -916,9 +999,12 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Widget _buildTopStrip() {
-    final title = _copy('إنتاج محتوى يبان بقوة', 'Content that lands strong');
+    final title = _copy(
+      'خدمات إنتاج سينمائية متكاملة',
+      'Content that lands strong',
+    );
     final subtitle = _copy(
-      'تصوير، مونتاج، إعلانات، ومحتوى متحرك بخط بصري واضح.',
+      'مسلسلات وافلام , تصوير إعلانات , بودكاست , فديو كليب , إنتاج فني , إنتاج وتوزيع منصات , مونتاج , إخراج سينمائي ',
       'Film, editing, ads, and motion content with a clear visual line.',
     );
     final titleBlock = Column(
@@ -935,7 +1021,10 @@ class _HomeScreenState extends State<HomeScreen>
         const SizedBox(height: 8),
         Text(
           subtitle,
-          style: TextStyle(color: _primaryText.withValues(alpha: 0.70), fontSize: 15),
+          style: TextStyle(
+            color: _primaryText.withValues(alpha: 0.70),
+            fontSize: 15,
+          ),
         ),
       ],
     );
@@ -943,9 +1032,9 @@ class _HomeScreenState extends State<HomeScreen>
       children: [
         _MetricTile('24/7', _copy('دعم', 'Support')),
         const SizedBox(width: 10),
-        _MetricTile('HD', _copy('إخراج', 'Output')),
+        _MetricTile('', _copy('إخراج', 'Output')),
         const SizedBox(width: 10),
-        _MetricTile('Fast', _copy('تنفيذ', 'Delivery')),
+        _MetricTile('', _copy('تنفيذ', 'Delivery')),
       ],
     );
 
@@ -957,22 +1046,18 @@ class _HomeScreenState extends State<HomeScreen>
           if (!isWide) {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                titleBlock,
-                const SizedBox(height: 16),
-                metrics,
-              ],
+              children: [titleBlock, const SizedBox(height: 16), metrics],
             );
           }
           return Flex(
             direction: isWide ? Axis.horizontal : Axis.vertical,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                flex: isWide ? 2 : 0,
-                child: titleBlock,
-              ),
-              if (isWide) const SizedBox(width: 18) else const SizedBox(height: 16),
+              Expanded(flex: isWide ? 2 : 0, child: titleBlock),
+              if (isWide)
+                const SizedBox(width: 18)
+              else
+                const SizedBox(height: 16),
               Expanded(flex: isWide ? 1 : 0, child: metrics),
             ],
           );
@@ -1002,10 +1087,7 @@ class _HomeScreenState extends State<HomeScreen>
         const SizedBox(height: 10),
         if (stories.isEmpty)
           Text(
-            _copy(
-              'لا توجد حالات مضافة الآن',
-              'No stories added yet',
-            ),
+            _copy('لا توجد حالات مضافة الآن', 'No stories added yet'),
             style: TextStyle(color: _primaryText.withValues(alpha: 0.58)),
           )
         else
@@ -1019,8 +1101,9 @@ class _HomeScreenState extends State<HomeScreen>
                 final media = stories[index];
                 return _DailyStoryCircle(
                   label: media.title,
-                  imageUrl:
-                      media.isVideo ? media.thumbnail : (media.thumbnail ?? media.url),
+                  imageUrl: media.isVideo
+                      ? media.thumbnail
+                      : (media.thumbnail ?? media.url),
                   icon: media.isVideo ? Icons.play_arrow : Icons.image_outlined,
                   borderColor: const Color(0xFFE50914),
                   textColor: _primaryText,
@@ -1068,14 +1151,17 @@ class _HomeScreenState extends State<HomeScreen>
                       shape: BoxShape.circle,
                       color: Colors.black.withValues(alpha: 0.34),
                       border: Border.all(
-                        color: isSelected ? const Color(0xFFE50914) : Colors.white30,
+                        color: isSelected
+                            ? const Color(0xFFE50914)
+                            : Colors.white30,
                         width: isSelected ? 3 : 1,
                       ),
                       boxShadow: isSelected
                           ? [
                               BoxShadow(
-                                color: const Color(0xFFE50914)
-                                    .withValues(alpha: 0.28),
+                                color: const Color(
+                                  0xFFE50914,
+                                ).withValues(alpha: 0.28),
                                 blurRadius: 16,
                               ),
                             ]
@@ -1104,7 +1190,7 @@ class _HomeScreenState extends State<HomeScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const _SectionTitle('إعلانات متحركة', 'اسحب يمين وشمال'),
+        const _SectionTitle('إعلانات', 'اسحب يمين وشمال'),
         const SizedBox(height: 12),
         SizedBox(
           height: 230,
@@ -1128,15 +1214,15 @@ class _HomeScreenState extends State<HomeScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const _SectionTitle('الخدمات', 'حلول سريعة للمحتوى'),
+        const _SectionTitle('الخدمات', 'خدمات سينمائية متكاملة'),
         const SizedBox(height: 12),
         LayoutBuilder(
           builder: (context, constraints) {
             final columns = constraints.maxWidth > 900
                 ? 4
                 : constraints.maxWidth > 560
-                    ? 2
-                    : 1;
+                ? 2
+                : 1;
             return GridView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
@@ -1149,41 +1235,63 @@ class _HomeScreenState extends State<HomeScreen>
               ),
               itemBuilder: (context, index) {
                 final service = _services[index];
-                return _GlassPanel(
-                  padding: const EdgeInsets.all(14),
-                  child: Row(
-                    children: [
-                      _IconBox(icon: service.icon),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              service.title,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w800,
-                                fontSize: 15,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              service.subtitle,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: Colors.white70,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ],
+                final serviceKey = index >= 0 && index < _serviceKeys.length
+                    ? _serviceKeys[index]
+                    : 'film';
+                return GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ChangeNotifierProvider(
+                          create: (_) => MediaProvider(),
+                          child: serviceKey == 'series_movies'
+                              ? const SeriesFoldersScreen()
+                              : ServiceFeedScreen(
+                                  serviceKey: serviceKey,
+                                  serviceTitle: service.title,
+                                  serviceSubtitle: service.subtitle,
+                                ),
                         ),
                       ),
-                    ],
+                    );
+                  },
+                  child: _GlassPanel(
+                    padding: const EdgeInsets.all(14),
+                    child: Row(
+                      children: [
+                        _IconBox(icon: service.icon),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                service.title,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 15,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                service.subtitle,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 );
               },
@@ -1223,21 +1331,23 @@ class _HomeScreenState extends State<HomeScreen>
                 height: 160,
                 child: isLoading
                     ? const Center(
-                        child: CircularProgressIndicator(color: Color(0xFFE50914)),
+                        child: CircularProgressIndicator(
+                          color: Color(0xFFE50914),
+                        ),
                       )
                     : videos.isEmpty
-                        ? const _EmptyState(
-                            icon: Icons.play_circle_outline,
-                            text: 'أضف فيديوهات من لوحة الإدارة لتظهر هنا',
-                          )
-                        : ListView.separated(
-                            scrollDirection: Axis.horizontal,
-                            itemCount: videos.length,
-                            separatorBuilder: (_, __) => const SizedBox(width: 12),
-                            itemBuilder: (context, index) {
-                              return _MediaPreview(media: videos[index]);
-                            },
-                          ),
+                    ? const _EmptyState(
+                        icon: Icons.play_circle_outline,
+                        text: 'أضف فيديوهات من لوحة الإدارة لتظهر هنا',
+                      )
+                    : ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: videos.length,
+                        separatorBuilder: (_, __) => const SizedBox(width: 12),
+                        itemBuilder: (context, index) {
+                          return _MediaPreview(media: videos[index]);
+                        },
+                      ),
               ),
             ],
           ),
@@ -1260,18 +1370,18 @@ class _HomeScreenState extends State<HomeScreen>
                   child: CircularProgressIndicator(color: Color(0xFFE50914)),
                 )
               : selectedMedia.isEmpty
-                  ? const _EmptyState(
-                      icon: Icons.photo_library_outlined,
-                      text: 'لا توجد أعمال متاحة الآن',
-                    )
-                  : ListView.separated(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: selectedMedia.length,
-                      separatorBuilder: (_, __) => const SizedBox(width: 12),
-                      itemBuilder: (context, index) {
-                        return _MediaPreview(media: selectedMedia[index]);
-                      },
-                    ),
+              ? const _EmptyState(
+                  icon: Icons.photo_library_outlined,
+                  text: 'لا توجد أعمال متاحة الآن',
+                )
+              : ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: selectedMedia.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 12),
+                  itemBuilder: (context, index) {
+                    return _MediaPreview(media: selectedMedia[index]);
+                  },
+                ),
         ),
       ],
     );
@@ -1624,8 +1734,9 @@ class _AppIconButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final foreground =
-        Theme.of(context).brightness == Brightness.light ? Colors.black : Colors.white;
+    final foreground = Theme.of(context).brightness == Brightness.light
+        ? Colors.black
+        : Colors.white;
     return IconButton(
       onPressed: onPressed,
       icon: Icon(icon, color: foreground, size: 22),
@@ -1713,9 +1824,11 @@ class _SupportChatBubble extends StatelessWidget {
     final backgroundColor = isUser
         ? const Color(0xFFE50914)
         : isLight
-            ? Colors.white.withValues(alpha: 0.78)
-            : Colors.black.withValues(alpha: 0.34);
-    final textColor = isUser ? Colors.white : (isLight ? Colors.black : Colors.white);
+        ? Colors.white.withValues(alpha: 0.78)
+        : Colors.black.withValues(alpha: 0.34);
+    final textColor = isUser
+        ? Colors.white
+        : (isLight ? Colors.black : Colors.white);
 
     return Align(
       alignment: alignment,
@@ -1772,7 +1885,11 @@ class _DailyStoryCircle extends StatelessWidget {
           ),
         ),
         child: Center(
-          child: Icon(icon, color: Colors.white.withValues(alpha: 0.92), size: 26),
+          child: Icon(
+            icon,
+            color: Colors.white.withValues(alpha: 0.92),
+            size: 26,
+          ),
         ),
       );
     }
@@ -1871,7 +1988,9 @@ class _MetricTile extends StatelessWidget {
             const SizedBox(height: 4),
             Text(
               label,
-              style: TextStyle(color: isLight ? Colors.black54 : Colors.white60),
+              style: TextStyle(
+                color: isLight ? Colors.black54 : Colors.white60,
+              ),
             ),
           ],
         ),
@@ -1961,7 +2080,8 @@ class _AdBanner extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  media?.title ?? _fallbackTitles[index % _fallbackTitles.length],
+                  media?.title ??
+                      _fallbackTitles[index % _fallbackTitles.length],
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
@@ -1972,7 +2092,8 @@ class _AdBanner extends StatelessWidget {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  media?.description ?? 'إعلان متحرك بخط أحمر وأسود وواجهة زجاجية.',
+                  media?.description ??
+                      'إعلان متحرك بخط أحمر وأسود وواجهة زجاجية.',
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(color: Colors.white70, fontSize: 13),
@@ -2035,9 +2156,18 @@ class _MediaPreview extends StatelessWidget {
     return InkWell(
       borderRadius: BorderRadius.circular(8),
       onTap: () {
+        if (media.isVideo) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => VideoPlayerScreen(media: media)),
+          );
+          return;
+        }
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (context) => MediaDetailScreen(media: media)),
+          MaterialPageRoute(
+            builder: (context) => MediaDetailScreen(media: media),
+          ),
         );
       },
       child: SizedBox(

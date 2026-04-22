@@ -7,6 +7,7 @@ import '../../providers/response_provider.dart';
 import '../../widgets/app_network_image.dart';
 import 'upload_media_screen.dart';
 import 'responses_screen.dart';
+import 'service_requests_screen.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -22,32 +23,51 @@ class _AdminDashboardState extends State<AdminDashboard> {
     const AdminHomeScreen(),
     const UploadMediaScreen(),
     const AdminResponsesScreen(),
+    const AdminServiceRequestsScreen(),
+  ];
+
+  static const _titles = [
+    'لوحة التحكم',
+    'رفع المحتوى',
+    'الردود',
+    'طلبات الخدمات',
   ];
 
   @override
   Widget build(BuildContext context) {
+    final title = _selectedIndex >= 0 && _selectedIndex < _titles.length
+        ? _titles[_selectedIndex]
+        : 'Admin Dashboard';
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Admin Dashboard'),
+        title: Text(title),
         backgroundColor: const Color(0xFFE50914),
       ),
       body: _screens[_selectedIndex],
       bottomNavigationBar: BottomNavigationBar(
+        type: BottomNavigationBarType.fixed,
         currentIndex: _selectedIndex,
         onTap: (index) {
           setState(() {
             _selectedIndex = index;
           });
         },
+        selectedItemColor: const Color(0xFFE50914),
+        unselectedItemColor: Colors.white70,
+        backgroundColor: Colors.black,
         items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.dashboard),
-            label: 'Overview',
+            label: 'الرئيسية',
           ),
-          BottomNavigationBarItem(icon: Icon(Icons.upload), label: 'Upload'),
+          BottomNavigationBarItem(icon: Icon(Icons.upload), label: 'رفع'),
           BottomNavigationBarItem(
             icon: Icon(Icons.feedback),
-            label: 'Responses',
+            label: 'الردود',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.assignment_outlined),
+            label: 'الطلبات',
           ),
         ],
       ),
@@ -325,9 +345,29 @@ class AdminHomeScreen extends StatelessWidget {
 
     final titleController = TextEditingController(text: media.title);
     final descriptionController = TextEditingController(text: media.description);
+    final collectionTitleController =
+        TextEditingController(text: media.collectionTitle ?? '');
+    final sequenceController =
+        TextEditingController(text: media.sequence?.toString() ?? '');
 
     const typeOptions = ['image', 'video'];
-    const categoryOptions = ['film', 'montage', 'advertisement', 'design', 'story'];
+    const categoryOptions = [
+      'film',
+      'montage',
+      'advertisement',
+      'story',
+      'series_movies',
+      'ads_shooting',
+      'podcast',
+      'video_clip',
+      'art_production',
+      'platform_distribution',
+      'commercial_ads',
+      'global_events',
+      'media_coverage',
+      'audio_recordings',
+      'gov_partnership_ads',
+    ];
 
     String type = typeOptions.contains(media.type) ? media.type : 'image';
     String category =
@@ -337,73 +377,96 @@ class AdminHomeScreen extends StatelessWidget {
     try {
       saved = await showDialog<bool>(
             context: context,
-            builder: (dialogContext) => AlertDialog(
-              title: const Text('Edit media'),
-              content: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 520),
-                child: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      TextField(
-                        controller: titleController,
-                        decoration: const InputDecoration(labelText: 'Title'),
-                      ),
-                      const SizedBox(height: 10),
-                      TextField(
-                        controller: descriptionController,
-                        minLines: 2,
-                        maxLines: 4,
-                        decoration:
-                            const InputDecoration(labelText: 'Description'),
-                      ),
-                      const SizedBox(height: 10),
-                      DropdownButtonFormField<String>(
-                        value: type,
-                        decoration: const InputDecoration(labelText: 'Type'),
-                        items: typeOptions
-                            .map(
-                              (value) => DropdownMenuItem(
-                                value: value,
-                                child: Text(value),
-                              ),
-                            )
-                            .toList(),
-                        onChanged: (value) => type = value ?? type,
-                      ),
-                      const SizedBox(height: 10),
-                      DropdownButtonFormField<String>(
-                        value: category,
-                        decoration:
-                            const InputDecoration(labelText: 'Category'),
-                        items: categoryOptions
-                            .map(
-                              (value) => DropdownMenuItem(
-                                value: value,
-                                child: Text(value),
-                              ),
-                            )
-                            .toList(),
-                        onChanged: (value) => category = value ?? category,
-                      ),
-                    ],
+            builder: (dialogContext) => StatefulBuilder(
+              builder: (dialogContext, setDialogState) => AlertDialog(
+                title: const Text('Edit media'),
+                content: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 520),
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        TextField(
+                          controller: titleController,
+                          decoration: const InputDecoration(labelText: 'Title'),
+                        ),
+                        const SizedBox(height: 10),
+                        TextField(
+                          controller: descriptionController,
+                          minLines: 2,
+                          maxLines: 4,
+                          decoration:
+                              const InputDecoration(labelText: 'Description'),
+                        ),
+                        const SizedBox(height: 10),
+                        DropdownButtonFormField<String>(
+                          value: type,
+                          decoration: const InputDecoration(labelText: 'Type'),
+                          items: typeOptions
+                              .map(
+                                (value) => DropdownMenuItem(
+                                  value: value,
+                                  child: Text(value),
+                                ),
+                              )
+                              .toList(),
+                          onChanged: (value) => setDialogState(
+                            () => type = value ?? type,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        DropdownButtonFormField<String>(
+                          value: category,
+                          decoration:
+                              const InputDecoration(labelText: 'Category'),
+                          items: categoryOptions
+                              .map(
+                                (value) => DropdownMenuItem(
+                                  value: value,
+                                  child: Text(value),
+                                ),
+                              )
+                              .toList(),
+                          onChanged: (value) => setDialogState(
+                            () => category = value ?? category,
+                          ),
+                        ),
+                        if (category == 'series_movies') ...[
+                          const SizedBox(height: 10),
+                          TextField(
+                            controller: collectionTitleController,
+                            decoration: const InputDecoration(
+                              labelText: 'Folder / Series name',
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          TextField(
+                            controller: sequenceController,
+                            keyboardType: TextInputType.number,
+                            decoration: const InputDecoration(
+                              labelText: 'Order (episode/part number)',
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
                   ),
                 ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(dialogContext, false),
+                    child: const Text('Cancel'),
+                  ),
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFE50914),
+                      foregroundColor: Colors.white,
+                    ),
+                    onPressed: () => Navigator.pop(dialogContext, true),
+                    child: const Text('Save'),
+                  ),
+                ],
               ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(dialogContext, false),
-                  child: const Text('Cancel'),
-                ),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFE50914),
-                    foregroundColor: Colors.white,
-                  ),
-                  onPressed: () => Navigator.pop(dialogContext, true),
-                  child: const Text('Save'),
-                ),
-              ],
             ),
           ) ??
           false;
@@ -411,6 +474,8 @@ class AdminHomeScreen extends StatelessWidget {
 
       final updatedTitle = titleController.text.trim();
       final updatedDescription = descriptionController.text.trim();
+      final updatedCollectionTitle = collectionTitleController.text.trim();
+      final updatedSequence = int.tryParse(sequenceController.text.trim());
 
       await mediaProvider.updateMediaMetadata(
         id: media.id,
@@ -419,6 +484,13 @@ class AdminHomeScreen extends StatelessWidget {
         description: updatedDescription,
         type: type,
         category: category,
+        collectionTitle: category == 'series_movies' && updatedCollectionTitle.isNotEmpty
+            ? updatedCollectionTitle
+            : null,
+        collectionKey: category == 'series_movies' && updatedCollectionTitle.isNotEmpty
+            ? updatedCollectionTitle.trim().toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '_').replaceAll(RegExp(r'^_+|_+$'), '')
+            : null,
+        sequence: category == 'series_movies' ? updatedSequence : null,
       );
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -432,6 +504,8 @@ class AdminHomeScreen extends StatelessWidget {
     } finally {
       titleController.dispose();
       descriptionController.dispose();
+      collectionTitleController.dispose();
+      sequenceController.dispose();
     }
   }
 

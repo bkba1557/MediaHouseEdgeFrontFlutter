@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import '../config/app_config.dart';
 import '../models/media.dart';
+import '../models/media_crew_draft.dart';
 
 class MediaProvider with ChangeNotifier {
   List<Media> _mediaList = [];
@@ -56,6 +57,11 @@ class MediaProvider with ChangeNotifier {
     required String type,
     required String category,
     required String token,
+    String? collectionKey,
+    String? collectionTitle,
+    int? sequence,
+    XFile? coverFile,
+    List<MediaCrewDraft>? crew,
   }) async {
     _isLoading = true;
     notifyListeners();
@@ -73,6 +79,48 @@ class MediaProvider with ChangeNotifier {
         category: category,
       );
 
+      String? coverUrl;
+      if (coverFile != null) {
+        coverUrl = await _uploadFileToFirebase(
+          file: coverFile,
+          type: 'image',
+          category: category,
+          subfolder: 'covers',
+        );
+      }
+
+      List<Map<String, dynamic>>? crewJson;
+      if (crew != null && crew.isNotEmpty) {
+        final uploadedCrew = <MediaCrewMember>[];
+        for (final member in crew) {
+          final name = member.name.trim();
+          final role = member.role.trim();
+          final file = member.photoFile;
+          if (name.isEmpty) continue;
+          if (file == null) continue;
+
+          final photoUrl = await _uploadFileToFirebase(
+            file: file,
+            type: 'image',
+            category: category,
+            subfolder: 'crew',
+          );
+          uploadedCrew.add(
+            MediaCrewMember(
+              name: name,
+              role: role,
+              photoUrl: photoUrl,
+            ),
+          );
+        }
+
+        if (uploadedCrew.isNotEmpty) {
+          crewJson = uploadedCrew
+              .map((member) => member.toJson())
+              .toList(growable: false);
+        }
+      }
+
       final response = await http.post(
         Uri.parse('$_baseUrl/media/upload'),
         headers: {
@@ -85,6 +133,11 @@ class MediaProvider with ChangeNotifier {
           'type': type,
           'category': category,
           'url': downloadUrl,
+          if (coverUrl != null) 'thumbnail': coverUrl,
+          if (crewJson != null) 'crew': crewJson,
+          if (collectionKey != null) 'collectionKey': collectionKey,
+          if (collectionTitle != null) 'collectionTitle': collectionTitle,
+          if (sequence != null) 'sequence': sequence,
         }),
       );
 
@@ -106,6 +159,7 @@ class MediaProvider with ChangeNotifier {
     required XFile file,
     required String type,
     required String category,
+    String? subfolder,
   }) async {
     final bytes = await file.readAsBytes();
     final extension = file.name.contains('.')
@@ -115,8 +169,11 @@ class MediaProvider with ChangeNotifier {
             : 'jpg';
     final timestamp = DateTime.now().millisecondsSinceEpoch;
     final safeName = file.name.replaceAll(RegExp(r'[^a-zA-Z0-9._-]'), '_');
+    final folder = (subfolder != null && subfolder.trim().isNotEmpty)
+        ? '/${subfolder.trim()}'
+        : '';
     final ref = FirebaseStorage.instance.ref(
-      'media/$category/$timestamp-$safeName',
+      'media/$category$folder/$timestamp-$safeName',
     );
 
     final metadata = SettableMetadata(
@@ -155,6 +212,9 @@ class MediaProvider with ChangeNotifier {
     required String category,
     String? url,
     String? thumbnail,
+    String? collectionKey,
+    String? collectionTitle,
+    int? sequence,
   }) async {
     _isLoading = true;
     _error = null;
@@ -169,6 +229,9 @@ class MediaProvider with ChangeNotifier {
       };
       if (url != null) body['url'] = url;
       if (thumbnail != null) body['thumbnail'] = thumbnail;
+      if (collectionKey != null) body['collectionKey'] = collectionKey;
+      if (collectionTitle != null) body['collectionTitle'] = collectionTitle;
+      if (sequence != null) body['sequence'] = sequence;
 
       final response = await http.patch(
         Uri.parse('$_baseUrl/media/$id'),
