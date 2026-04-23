@@ -126,7 +126,7 @@ class _SplashScreenState extends State<SplashScreen> {
                 children: [
                   SizedBox.expand(
                     child: FittedBox(
-                      fit: BoxFit.contain,
+                      fit: BoxFit.cover,
                       alignment: Alignment.center,
                       child: SizedBox(
                         width: controller.value.size.width,

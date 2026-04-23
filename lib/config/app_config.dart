@@ -1,7 +1,7 @@
 class AppConfig {
   // static const String _rawApiBaseUrl = String.fromEnvironment(
   //   'API_BASE_URL',
-  //   defaultValue: 'http://192.168.8.230:6019/api',
+  //   defaultValue: 'http://127.0.0.1:6019/api',
   // );
   static const String _rawApiBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
@@ -9,10 +9,32 @@ class AppConfig {
   );
 
   static String get apiBaseUrl {
-    if (_rawApiBaseUrl.endsWith('/')) {
-      return _rawApiBaseUrl.substring(0, _rawApiBaseUrl.length - 1);
+    final normalized = _normalize(_rawApiBaseUrl);
+    final configuredUri = Uri.tryParse(normalized);
+    if (configuredUri == null || !configuredUri.hasAuthority) {
+      return normalized;
     }
-    return _rawApiBaseUrl;
+
+    final runtimeHost = Uri.base.host.trim();
+    if (runtimeHost.isEmpty) return normalized;
+
+    final configuredHost = configuredUri.host.trim();
+    final configuredIsLoopback =
+        configuredHost == '127.0.0.1' || configuredHost == 'localhost';
+    final runtimeIsLoopback =
+        runtimeHost == '127.0.0.1' || runtimeHost == 'localhost';
+
+    if (configuredIsLoopback && !runtimeIsLoopback) {
+      return configuredUri.replace(host: runtimeHost).toString();
+    }
+
+    return normalized;
+  }
+
+  static String _normalize(String value) {
+    if (value.endsWith('/')) {
+      return value.substring(0, value.length - 1);
+    }
+    return value;
   }
 }
-

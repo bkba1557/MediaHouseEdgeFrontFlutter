@@ -176,8 +176,9 @@ class _LoginScreenState extends State<LoginScreen> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         _GlowingLogoCircle(
-                          size: isMobile ? 120 : 148,
-                          logoScale: isMobile ? 3.0 : 2.8,
+                          size: isMobile ? 140 : 180,
+                          contentPadding: isMobile ? 7 : 9,
+                          logoScale: isMobile ? 2.86 : 2.68,
                           child: Image.asset(
                             'assets/images/media_house_logo.png',
                             fit: BoxFit.contain,
@@ -188,8 +189,8 @@ class _LoginScreenState extends State<LoginScreen> {
                           _isAwaitingOtp
                               ? 'أدخل رمز التحقق'
                               : _isLogin
-                                  ? 'تسجيل الدخول'
-                                  : 'إنشاء حساب',
+                              ? 'تسجيل الدخول'
+                              : 'إنشاء حساب',
                           style: const TextStyle(
                             fontSize: 24,
                             fontWeight: FontWeight.w800,
@@ -216,10 +217,12 @@ class _LoginScreenState extends State<LoginScreen> {
                                   icon: Icons.person_outline,
                                   focusNode: _usernameFocus,
                                   textInputAction: TextInputAction.next,
-                                  onSubmitted: (_) =>
-                                      FocusScope.of(context).requestFocus(_emailFocus),
+                                  onSubmitted: (_) => FocusScope.of(
+                                    context,
+                                  ).requestFocus(_emailFocus),
                                   validator: (value) {
-                                    if (value == null || value.trim().length < 3) {
+                                    if (value == null ||
+                                        value.trim().length < 3) {
                                       return 'اسم المستخدم لا يقل عن 3 أحرف';
                                     }
                                     return null;
@@ -235,8 +238,9 @@ class _LoginScreenState extends State<LoginScreen> {
                                   keyboardType: TextInputType.emailAddress,
                                   focusNode: _emailFocus,
                                   textInputAction: TextInputAction.next,
-                                  onSubmitted: (_) =>
-                                      FocusScope.of(context).requestFocus(_passwordFocus),
+                                  onSubmitted: (_) => FocusScope.of(
+                                    context,
+                                  ).requestFocus(_passwordFocus),
                                   validator: (value) {
                                     if (value == null || !value.contains('@')) {
                                       return 'اكتب بريد صحيح';
@@ -270,7 +274,8 @@ class _LoginScreenState extends State<LoginScreen> {
                                   textInputAction: TextInputAction.done,
                                   onSubmitted: (_) => _submitFromKeyboard(),
                                   validator: (value) {
-                                    if (value == null || value.trim().length != 6) {
+                                    if (value == null ||
+                                        value.trim().length != 6) {
                                       return 'اكتب رمز مكون من 6 أرقام';
                                     }
                                     return null;
@@ -297,7 +302,9 @@ class _LoginScreenState extends State<LoginScreen> {
                                   width: double.infinity,
                                   height: 50,
                                   child: ElevatedButton(
-                                    onPressed: authProvider.isLoading ? null : _submit,
+                                    onPressed: authProvider.isLoading
+                                        ? null
+                                        : _submit,
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: const Color(0xFFE50914),
                                       foregroundColor: Colors.white,
@@ -318,8 +325,8 @@ class _LoginScreenState extends State<LoginScreen> {
                                             _isAwaitingOtp
                                                 ? 'تأكيد الرمز'
                                                 : _isLogin
-                                                    ? 'إرسال رمز الدخول'
-                                                    : 'إرسال رمز التسجيل',
+                                                ? 'إرسال رمز الدخول'
+                                                : 'إرسال رمز التسجيل',
                                           ),
                                   ),
                                 ),
@@ -338,7 +345,9 @@ class _LoginScreenState extends State<LoginScreen> {
                                           color: Color(0xFFE50914),
                                         ),
                                         shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(8),
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
                                         ),
                                       ),
                                       child: const Text('الدخول كزائر'),
@@ -460,11 +469,11 @@ class _GlowingLogoCircle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ringPadding = math.max(2.8, size * 0.03);
-    final ringWidth = math.max(2.6, size * 0.028);
+    final ringPadding = math.max(5.0, size * 0.048).toDouble();
+    final ringWidth = math.max(3.2, size * 0.032).toDouble();
     // Ensure BoxShadow receives double values (math.max returns num).
     final glowBlur = math.max(22, size * 0.24).toDouble();
-    final glowSpread = math.max(2.6, size * 0.03).toDouble();
+    final glowSpread = math.max(3.2, size * 0.04).toDouble();
 
     return Container(
       width: size,

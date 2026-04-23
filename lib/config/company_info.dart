@@ -1,6 +1,10 @@
 class CompanyInfo {
   static const nameAr = 'Media House Edge';
   static const nameEn = 'Media House Edge';
+  static const developerNameAr = 'bkba1557';
+  static const developerNameEn = 'bkba1557';
+  static const developerCreditAr = 'تطوير وبرمجة';
+  static const developerCreditEn = 'Developed by';
 
   // Replace with your official numbers.
   static const commercialRegister = '0000000000';
@@ -15,4 +19,3 @@ class CompanyInfo {
   static const website = 'mediahouseedge.com';
   static const whatsapp = '+966000000000';
 }
-

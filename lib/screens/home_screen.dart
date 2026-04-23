@@ -6,16 +6,22 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../models/media.dart';
+import '../models/team_member.dart';
 import '../providers/auth_provider.dart';
+import '../providers/about_provider.dart';
 import '../providers/media_provider.dart';
 import '../providers/response_provider.dart';
+import '../providers/team_provider.dart';
 import '../config/company_info.dart';
 import '../widgets/app_network_image.dart';
+import '../widgets/team_member_engagement_widgets.dart';
 import 'admin/admin_dashboard.dart';
+import 'about_screen.dart';
 import 'media_detail_screen.dart';
 import 'service_feed_screen.dart';
 import 'series_folders_screen.dart';
 import 'story_view_screen.dart';
+import 'team_member_profile_screen.dart';
 import 'video_player_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -58,10 +64,15 @@ class _HomeScreenState extends State<HomeScreen>
   ];
 
   final List<_StoryCategory> _categories = const [
-    _StoryCategory('all', 'الكل', Icons.auto_awesome),
-    _StoryCategory('film', 'تصوير', Icons.movie_creation_outlined),
-    _StoryCategory('montage', 'مونتاج', Icons.content_cut),
-    _StoryCategory('advertisement', 'إعلانات تجارية', Icons.campaign_outlined),
+    _StoryCategory('all', 'الكل', 'All', Icons.auto_awesome_rounded),
+    _StoryCategory('film', 'تصوير', 'Filming', Icons.movie_creation_outlined),
+    _StoryCategory('montage', 'مونتاج', 'Editing', Icons.content_cut_rounded),
+    _StoryCategory(
+      'advertisement',
+      'إعلانات تجارية',
+      'Commercial Ads',
+      Icons.campaign_outlined,
+    ),
   ];
 
   final List<_ServiceItem> _services = const [
@@ -173,11 +184,17 @@ class _HomeScreenState extends State<HomeScreen>
 
   Future<void> _loadMedia() async {
     final mediaProvider = Provider.of<MediaProvider>(context, listen: false);
-    if (_selectedCategory == 'all') {
-      await mediaProvider.fetchMedia();
-    } else {
-      await mediaProvider.fetchMedia(category: _selectedCategory);
-    }
+    final teamProvider = Provider.of<TeamProvider>(context, listen: false);
+    final aboutProvider = Provider.of<AboutProvider>(context, listen: false);
+
+    await Future.wait([
+      if (_selectedCategory == 'all')
+        mediaProvider.fetchMedia()
+      else
+        mediaProvider.fetchMedia(category: _selectedCategory),
+      teamProvider.fetchTeamMembers(),
+      aboutProvider.fetchAboutPage(),
+    ]);
   }
 
   void _startAdTimer() {
@@ -673,7 +690,9 @@ class _HomeScreenState extends State<HomeScreen>
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
     final mediaProvider = Provider.of<MediaProvider>(context);
+    final teamProvider = Provider.of<TeamProvider>(context);
     final mediaList = mediaProvider.mediaList;
+    final teamMembers = teamProvider.members;
     final adMedia = mediaList
         .where((media) => media.category == 'advertisement')
         .take(6)
@@ -739,6 +758,12 @@ class _HomeScreenState extends State<HomeScreen>
                             const SizedBox(height: 28),
                             _buildServices(),
                             const SizedBox(height: 28),
+                            _buildTeamSection(
+                              teamMembers,
+                              teamProvider.isLoading,
+                              teamProvider.error,
+                            ),
+                            const SizedBox(height: 28),
                             _buildVideoBackdropArea(
                               videoMedia,
                               mediaProvider.isLoading,
@@ -803,6 +828,15 @@ class _HomeScreenState extends State<HomeScreen>
         ],
       ),
       actions: [
+        _AppIconButton(
+          icon: Icons.info_outline,
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const AboutScreen()),
+            );
+          },
+        ),
         _AppIconButton(
           icon: Icons.translate,
           onPressed: () => setState(() => _isArabic = !_isArabic),
@@ -1013,62 +1047,182 @@ class _HomeScreenState extends State<HomeScreen>
       'مسلسلات وافلام , تصوير إعلانات , بودكاست , فديو كليب , إنتاج فني , إنتاج وتوزيع منصات , مونتاج , إخراج سينمائي ',
       'Film, editing, ads, and motion content with a clear visual line.',
     );
-    final titleBlock = Column(
+    final titleBlock = Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          title,
-          style: TextStyle(
-            color: _primaryText,
-            fontSize: 30,
-            fontWeight: FontWeight.w700,
+        Container(
+          width: 50,
+          height: 50,
+          decoration: BoxDecoration(
+            color: const Color(0xFFE50914),
+            borderRadius: BorderRadius.circular(8),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFFE50914).withValues(alpha: 0.32),
+                blurRadius: 18,
+                offset: const Offset(0, 10),
+              ),
+            ],
+          ),
+          child: const Icon(
+            Icons.movie_creation_outlined,
+            color: Colors.white,
+            size: 27,
           ),
         ),
-        const SizedBox(height: 8),
-        Text(
-          subtitle,
-          style: TextStyle(
-            color: _primaryText.withValues(alpha: 0.70),
-            fontSize: 15,
+        const SizedBox(width: 14),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: TextStyle(
+                  color: _primaryText,
+                  fontSize: 28,
+                  height: 1.15,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                subtitle,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: _primaryText.withValues(alpha: 0.72),
+                  fontSize: 14,
+                  height: 1.5,
+                ),
+              ),
+            ],
           ),
         ),
       ],
     );
     final metrics = Row(
       children: [
-        _MetricTile('24/7', _copy('دعم', 'Support')),
+        _MetricTile(
+          value: '24/7',
+          label: _copy('دعم', 'Support'),
+          icon: Icons.support_agent_outlined,
+        ),
         const SizedBox(width: 10),
-        _MetricTile('', _copy('إخراج', 'Output')),
+        _MetricTile(
+          label: _copy('إخراج', 'Output'),
+          icon: Icons.video_camera_back_outlined,
+        ),
         const SizedBox(width: 10),
-        _MetricTile('', _copy('تنفيذ', 'Delivery')),
+        _MetricTile(
+          label: _copy('تنفيذ', 'Delivery'),
+          icon: Icons.task_alt_outlined,
+        ),
       ],
     );
 
-    return _GlassPanel(
-      padding: const EdgeInsets.all(18),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final isWide = constraints.maxWidth > 720;
-          if (!isWide) {
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [titleBlock, const SizedBox(height: 16), metrics],
-            );
-          }
-          return Flex(
-            direction: isWide ? Axis.horizontal : Axis.vertical,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(flex: isWide ? 2 : 0, child: titleBlock),
-              if (isWide)
-                const SizedBox(width: 18)
-              else
-                const SizedBox(height: 16),
-              Expanded(flex: isWide ? 1 : 0, child: metrics),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isLight = Theme.of(context).brightness == Brightness.light;
+        final isWide = constraints.maxWidth > 780;
+        final metricsWidth = math
+            .min(420.0, constraints.maxWidth * 0.36)
+            .clamp(330.0, 420.0)
+            .toDouble();
+
+        return Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isLight ? 0.08 : 0.28),
+                blurRadius: 30,
+                offset: const Offset(0, 18),
+              ),
             ],
-          );
-        },
-      ),
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: isLight
+                      ? Colors.white.withValues(alpha: 0.78)
+                      : const Color(0xFF19070B).withValues(alpha: 0.78),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: isLight
+                        ? Colors.black.withValues(alpha: 0.10)
+                        : Colors.white.withValues(alpha: 0.14),
+                  ),
+                  gradient: LinearGradient(
+                    begin: Alignment.topRight,
+                    end: Alignment.bottomLeft,
+                    colors: isLight
+                        ? [
+                            const Color(0xFFE50914).withValues(alpha: 0.08),
+                            Colors.white.withValues(alpha: 0.80),
+                            Colors.white.withValues(alpha: 0.62),
+                          ]
+                        : [
+                            const Color(0xFFE50914).withValues(alpha: 0.16),
+                            const Color(0xFF241015).withValues(alpha: 0.90),
+                            Colors.black.withValues(alpha: 0.28),
+                          ],
+                  ),
+                ),
+                child: Stack(
+                  children: [
+                    PositionedDirectional(
+                      start: 0,
+                      top: 0,
+                      bottom: 0,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              const Color(0xFFE50914),
+                              const Color(0xFFE50914).withValues(alpha: 0.18),
+                            ],
+                          ),
+                        ),
+                        child: const SizedBox(width: 4),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsetsDirectional.fromSTEB(
+                        24,
+                        20,
+                        22,
+                        20,
+                      ),
+                      child: isWide
+                          ? Row(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                Expanded(child: titleBlock),
+                                const SizedBox(width: 24),
+                                SizedBox(width: metricsWidth, child: metrics),
+                              ],
+                            )
+                          : Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                titleBlock,
+                                const SizedBox(height: 18),
+                                metrics,
+                              ],
+                            ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -1128,59 +1282,105 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Widget _buildStories() {
+    final isLight = _useLightTheme;
+
     return SizedBox(
-      height: 92,
+      height: 114,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
+        padding: const EdgeInsetsDirectional.only(start: 4, end: 4),
         itemCount: _categories.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 14),
+        separatorBuilder: (_, __) => const SizedBox(width: 12),
         itemBuilder: (context, index) {
           final category = _categories[index];
           final isSelected = _selectedCategory == category.value;
-          return InkWell(
-            borderRadius: BorderRadius.circular(48),
-            onTap: () {
-              setState(() => _selectedCategory = category.value);
-              _loadMedia();
-            },
-            child: SizedBox(
-              width: 76,
-              child: Column(
-                children: [
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 220),
-                    width: 62,
-                    height: 62,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.black.withValues(alpha: 0.34),
-                      border: Border.all(
+
+          return AnimatedScale(
+            duration: const Duration(milliseconds: 220),
+            curve: Curves.easeOutCubic,
+            scale: isSelected ? 1 : 0.98,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(24),
+              onTap: () {
+                setState(() => _selectedCategory = category.value);
+                _loadMedia();
+              },
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 220),
+                curve: Curves.easeOutCubic,
+                width: 96,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 10,
+                ),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? const Color(
+                          0xFFE50914,
+                        ).withValues(alpha: isLight ? 0.10 : 0.16)
+                      : (isLight
+                            ? Colors.black.withValues(alpha: 0.035)
+                            : Colors.white.withValues(alpha: 0.028)),
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(
+                    color: isSelected ? const Color(0xFFE50914) : _glassBorder,
+                    width: isSelected ? 1.5 : 1,
+                  ),
+                  boxShadow: isSelected
+                      ? [
+                          BoxShadow(
+                            color: const Color(
+                              0xFFE50914,
+                            ).withValues(alpha: 0.16),
+                            blurRadius: 20,
+                            offset: const Offset(0, 12),
+                          ),
+                        ]
+                      : null,
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 220),
+                      width: 50,
+                      height: 50,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
                         color: isSelected
                             ? const Color(0xFFE50914)
-                            : Colors.white30,
-                        width: isSelected ? 3 : 1,
+                            : (isLight
+                                  ? Colors.white
+                                  : Colors.black.withValues(alpha: 0.24)),
+                        border: Border.all(
+                          color: isSelected
+                              ? const Color(0xFFE50914)
+                              : _glassBorder,
+                        ),
                       ),
-                      boxShadow: isSelected
-                          ? [
-                              BoxShadow(
-                                color: const Color(
-                                  0xFFE50914,
-                                ).withValues(alpha: 0.28),
-                                blurRadius: 16,
-                              ),
-                            ]
-                          : null,
+                      child: Icon(
+                        category.icon,
+                        color: isSelected ? Colors.white : _primaryText,
+                        size: 24,
+                      ),
                     ),
-                    child: Icon(category.icon, color: Colors.white, size: 27),
-                  ),
-                  const SizedBox(height: 7),
-                  Text(
-                    _copy(category.label, category.value.toUpperCase()),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(color: _primaryText, fontSize: 12),
-                  ),
-                ],
+                    const SizedBox(height: 10),
+                    Text(
+                      _copy(category.labelAr, category.labelEn),
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: _primaryText,
+                        fontSize: 12,
+                        fontWeight: isSelected
+                            ? FontWeight.w700
+                            : FontWeight.w600,
+                        height: 1.25,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           );
@@ -1189,44 +1389,67 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  /// يبني شريط الإعلانات (carousel) ويضمن أن الصورة تملأ مساحة البطاقة
-  /// بالكامل دون أن تُدفَس إلى الطرف الأيمن عند استعمال اللغة العربية (RTL).
   Widget _buildAdCarousel(List<Media> adMedia) {
-    // إذا لم يكن هناك إعلانات نعرض 3 بطاقات بديلة (fallback)
-    final int itemCount = adMedia.isEmpty ? 3 : adMedia.length;
+    final itemCount = adMedia.isEmpty ? 3 : adMedia.length;
+    final isLight = _useLightTheme;
+    final badgeLabel = _copy(
+      adMedia.isEmpty ? 'معرض إعلاني' : '${adMedia.length} إعلان',
+      adMedia.isEmpty ? 'Ad Showcase' : '${adMedia.length} Ads',
+    );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const _SectionTitle('إعلانات', 'اسحب يمين وشمال'),
-        const SizedBox(height: 12),
-
-        // --------‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑-
-        // 1️⃣  الصفحة (PageView) التي تستضيف البطاقات
-        //    * لا نضيف أي padding داخل الـ PageView لأن الـ viewportFraction
-        //      يحدد حجم الصفحة (86 % من عرض الشاشة) تلقائيًا.
-        //    * إذا أردت فاصلًا بسيطًا بين البطاقات في الاتجاه الأفقي
-        //      يمكن إضافة margin داخل `_AdBanner` نفسه.
-        // --------‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑-
-        SizedBox(
-          height: 230,
-          child: adMedia.length == 1
-              ? _AdBanner(media: adMedia.first, index: 0)
-              : Directionality(
-                  textDirection: TextDirection.ltr,
-                  child: PageView.builder(
-                    controller: _adPageController,
-                    // لا نستخدم EdgeInsetsDirectional هنا لتفادي الإزاحة في RTL
-                    itemCount: itemCount,
-                    itemBuilder: (context, index) {
-                      final Media? media = adMedia.isEmpty
-                          ? null
-                          : adMedia[index];
-                      // `_AdBanner` سيتلقى حجم الصفحة من الـ PageView ويملأه بالكامل
-                      return _AdBanner(media: media, index: index);
-                    },
-                  ),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            const Expanded(child: _SectionTitle('إعلانات', 'اسحب للتصفح')),
+            Container(
+              padding: const EdgeInsetsDirectional.fromSTEB(12, 8, 12, 8),
+              decoration: BoxDecoration(
+                color: isLight
+                    ? Colors.black.withValues(alpha: 0.05)
+                    : Colors.white.withValues(alpha: 0.06),
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(color: _glassBorder),
+              ),
+              child: Text(
+                badgeLabel,
+                style: TextStyle(
+                  color: _primaryText.withValues(alpha: 0.82),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
                 ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 14),
+        Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: isLight
+                ? Colors.black.withValues(alpha: 0.025)
+                : Colors.white.withValues(alpha: 0.04),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: _glassBorder),
+          ),
+          child: SizedBox(
+            height: 236,
+            child: adMedia.length == 1
+                ? _AdBanner(media: adMedia.first, index: 0)
+                : Directionality(
+                    textDirection: TextDirection.ltr,
+                    child: PageView.builder(
+                      controller: _adPageController,
+                      itemCount: itemCount,
+                      itemBuilder: (context, index) {
+                        final media = adMedia.isEmpty ? null : adMedia[index];
+                        return _AdBanner(media: media, index: index);
+                      },
+                    ),
+                  ),
+          ),
         ),
       ],
     );
@@ -1237,7 +1460,7 @@ class _HomeScreenState extends State<HomeScreen>
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const _SectionTitle('الخدمات', 'خدمات سينمائية متكاملة'),
-        const SizedBox(height: 12),
+        const SizedBox(height: 16),
         LayoutBuilder(
           builder: (context, constraints) {
             final columns = constraints.maxWidth > 900
@@ -1245,22 +1468,29 @@ class _HomeScreenState extends State<HomeScreen>
                 : constraints.maxWidth > 560
                 ? 2
                 : 1;
+            final ratio = columns == 1
+                ? 3.55
+                : columns == 2
+                ? 2.65
+                : 2.45;
+
             return GridView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               itemCount: _services.length,
               gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: columns,
-                mainAxisSpacing: 12,
-                crossAxisSpacing: 12,
-                childAspectRatio: columns == 1 ? 3.8 : 2.4,
+                mainAxisSpacing: 14,
+                crossAxisSpacing: 14,
+                childAspectRatio: ratio,
               ),
               itemBuilder: (context, index) {
                 final service = _services[index];
                 final serviceKey = index >= 0 && index < _serviceKeys.length
                     ? _serviceKeys[index]
                     : 'film';
-                return GestureDetector(
+                return _ServiceCard(
+                  service: service,
                   onTap: () {
                     Navigator.push(
                       context,
@@ -1278,43 +1508,6 @@ class _HomeScreenState extends State<HomeScreen>
                       ),
                     );
                   },
-                  child: _GlassPanel(
-                    padding: const EdgeInsets.all(14),
-                    child: Row(
-                      children: [
-                        _IconBox(icon: service.icon),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                service.title,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 15,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                service.subtitle,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  color: Colors.white70,
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
                 );
               },
             );
@@ -1324,7 +1517,133 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
+  Widget _buildTeamSection(
+    List<TeamMember> members,
+    bool isLoading,
+    String? error,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const _SectionTitle('فريق العمل', 'ملفات تعريف وأعمال أعضاء الفريق'),
+        const SizedBox(height: 12),
+        if (isLoading && members.isEmpty)
+          const Center(
+            child: Padding(
+              padding: EdgeInsets.symmetric(vertical: 26),
+              child: CircularProgressIndicator(color: Color(0xFFE50914)),
+            ),
+          )
+        else if (error != null && members.isEmpty)
+          _GlassPanel(
+            padding: const EdgeInsets.all(18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _copy(
+                    'تعذر تحميل فريق العمل.',
+                    'Failed to load the team section.',
+                  ),
+                  style: TextStyle(
+                    color: _primaryText,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  error,
+                  style: TextStyle(color: _primaryText.withValues(alpha: 0.72)),
+                ),
+                const SizedBox(height: 14),
+                FilledButton.icon(
+                  onPressed: () =>
+                      context.read<TeamProvider>().fetchTeamMembers(),
+                  icon: const Icon(Icons.refresh_rounded),
+                  label: Text(_copy('إعادة المحاولة', 'Retry')),
+                ),
+              ],
+            ),
+          )
+        else if (members.isEmpty)
+          _GlassPanel(
+            padding: const EdgeInsets.all(18),
+            child: Text(
+              _copy(
+                'أضف أعضاء الفريق من لوحة التحكم ليظهروا هنا.',
+                'Add team members from the dashboard to show them here.',
+              ),
+              style: TextStyle(color: _primaryText.withValues(alpha: 0.74)),
+            ),
+          )
+        else
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final columns = constraints.maxWidth > 980
+                  ? 4
+                  : constraints.maxWidth > 680
+                  ? 2
+                  : 1;
+              final ratio = columns == 1
+                  ? 2.8
+                  : columns == 2
+                  ? 1.34
+                  : 0.74;
+
+              return GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: members.length,
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: columns,
+                  mainAxisSpacing: 14,
+                  crossAxisSpacing: 14,
+                  childAspectRatio: ratio,
+                ),
+                itemBuilder: (context, index) {
+                  final member = members[index];
+                  final authUserId = context.read<AuthProvider>().user?.id;
+                  return _TeamMemberSpotlightCard(
+                    member: member,
+                    isLiked: context.read<TeamProvider>().isMemberLiked(
+                      member.id,
+                    ),
+                    onLike: () async {
+                      try {
+                        await context.read<TeamProvider>().toggleMemberLike(
+                          memberId: member.id,
+                          userId: authUserId,
+                        );
+                      } catch (error) {
+                        if (!context.mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('تعذر تحديث الإعجاب: $error')),
+                        );
+                      }
+                    },
+                    onComment: () {
+                      showTeamMemberCommentsSheet(context, member: member);
+                    },
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              TeamMemberProfileScreen(member: member),
+                        ),
+                      );
+                    },
+                  );
+                },
+              );
+            },
+          ),
+      ],
+    );
+  }
+
   Widget _buildVideoBackdropArea(List<Media> videos, bool isLoading) {
+    final railHeight = MediaQuery.sizeOf(context).width < 600 ? 178.0 : 188.0;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1335,45 +1654,91 @@ class _HomeScreenState extends State<HomeScreen>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'مساحة الفيديوهات المتغيرة',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'المعاينات لا تعمل تلقائيًا للحفاظ على سرعة الصفحة. افتح أي عنصر لتشغيله.',
-                style: TextStyle(color: Colors.white70, fontSize: 13),
-              ),
-              const SizedBox(height: 14),
-              SizedBox(
-                height: MediaQuery.sizeOf(context).width < 600 ? 160 : 170,
-                child: isLoading
-                    ? const Center(
-                        child: CircularProgressIndicator(
-                          color: Color(0xFFE50914),
+              Row(
+                children: [
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'مساحة الفيديوهات المتغيرة',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
-                      )
-                    : videos.isEmpty
-                    ? const _EmptyState(
-                        icon: Icons.play_circle_outline,
-                        text: 'أضف فيديوهات من لوحة الإدارة لتظهر هنا',
-                      )
-                    : Directionality(
-                        textDirection: TextDirection.ltr,
-                        child: ListView.separated(
-                          scrollDirection: Axis.horizontal,
-                          itemCount: videos.length,
-                          separatorBuilder: (_, __) =>
-                              const SizedBox(width: 12),
-                          itemBuilder: (context, index) {
-                            return _MediaPreview(media: videos[index]);
-                          },
+                        SizedBox(height: 8),
+                        Text(
+                          'افتح أي عنصر لتشغيله',
+                          style: TextStyle(color: Colors.white70, fontSize: 13),
                         ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE50914).withValues(alpha: 0.14),
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(
+                        color: const Color(0xFFE50914).withValues(alpha: 0.34),
                       ),
+                    ),
+                    child: Text(
+                      '${videos.length} ${_copy('فيديو', 'Videos')}',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.white12),
+                ),
+                child: SizedBox(
+                  height: railHeight,
+                  child: isLoading
+                      ? const Center(
+                          child: CircularProgressIndicator(
+                            color: Color(0xFFE50914),
+                          ),
+                        )
+                      : videos.isEmpty
+                      ? const _EmptyState(
+                          icon: Icons.play_circle_outline,
+                          text: 'أضف فيديوهات من لوحة الإدارة لتظهر هنا',
+                        )
+                      : Directionality(
+                          textDirection: _textDirection,
+                          child: ListView.separated(
+                            scrollDirection: Axis.horizontal,
+                            padding: const EdgeInsetsDirectional.only(
+                              start: 2,
+                              end: 2,
+                            ),
+                            itemCount: videos.length,
+                            separatorBuilder: (_, __) =>
+                                const SizedBox(width: 12),
+                            itemBuilder: (context, index) {
+                              return _MediaPreview(media: videos[index]);
+                            },
+                          ),
+                        ),
+                ),
               ),
             ],
           ),
@@ -1384,33 +1749,103 @@ class _HomeScreenState extends State<HomeScreen>
 
   Widget _buildPortfolio(List<Media> mediaList, bool isLoading) {
     final selectedMedia = mediaList.take(8).toList();
+    final railHeight = MediaQuery.sizeOf(context).width < 600 ? 198.0 : 208.0;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const _SectionTitle('أعمال حديثة', 'صور وفيديوهات'),
         const SizedBox(height: 12),
-        SizedBox(
-          height: MediaQuery.sizeOf(context).width < 600 ? 180 : 190,
-          child: isLoading
-              ? const Center(
-                  child: CircularProgressIndicator(color: Color(0xFFE50914)),
-                )
-              : selectedMedia.isEmpty
-              ? const _EmptyState(
-                  icon: Icons.photo_library_outlined,
-                  text: 'لا توجد أعمال متاحة الآن',
-                )
-              : Directionality(
-                  textDirection: TextDirection.ltr,
-                  child: ListView.separated(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: selectedMedia.length,
-                    separatorBuilder: (_, __) => const SizedBox(width: 12),
-                    itemBuilder: (context, index) {
-                      return _MediaPreview(media: selectedMedia[index]);
-                    },
+        _GlassPanel(
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'معرض الأعمال',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        SizedBox(height: 8),
+                        Text(
+                          'أحدث الصور والفيديوهات المضافة.',
+                          style: TextStyle(color: Colors.white70, fontSize: 13),
+                        ),
+                      ],
+                    ),
                   ),
+                  const SizedBox(width: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.06),
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(color: Colors.white12),
+                    ),
+                    child: Text(
+                      '${selectedMedia.length} ${_copy('عنصر', 'Items')}',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.white12),
                 ),
+                child: SizedBox(
+                  height: railHeight,
+                  child: isLoading
+                      ? const Center(
+                          child: CircularProgressIndicator(
+                            color: Color(0xFFE50914),
+                          ),
+                        )
+                      : selectedMedia.isEmpty
+                      ? const _EmptyState(
+                          icon: Icons.photo_library_outlined,
+                          text: 'لا توجد أعمال متاحة الآن',
+                        )
+                      : Directionality(
+                          textDirection: _textDirection,
+                          child: ListView.separated(
+                            scrollDirection: Axis.horizontal,
+                            padding: const EdgeInsetsDirectional.only(
+                              start: 2,
+                              end: 2,
+                            ),
+                            itemCount: selectedMedia.length,
+                            separatorBuilder: (_, __) =>
+                                const SizedBox(width: 12),
+                            itemBuilder: (context, index) {
+                              return _MediaPreview(media: selectedMedia[index]);
+                            },
+                          ),
+                        ),
+                ),
+              ),
+            ],
+          ),
         ),
       ],
     );
@@ -1535,14 +1970,107 @@ class _HomeScreenState extends State<HomeScreen>
             color: Colors.white.withValues(alpha: isLight ? 0.35 : 0.10),
           ),
           const SizedBox(height: 12),
-          Text(
-            '© ${DateTime.now().year} ${CompanyInfo.nameEn}',
-            style: TextStyle(
-              color: isLight
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final compact = constraints.maxWidth < 680;
+              final mutedColor = isLight
                   ? Colors.black.withValues(alpha: 0.55)
-                  : Colors.white.withValues(alpha: 0.55),
-              fontSize: 12,
-            ),
+                  : Colors.white.withValues(alpha: 0.55);
+
+              final developerCredit = Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: Container(
+                  padding: const EdgeInsetsDirectional.fromSTEB(12, 10, 14, 10),
+                  decoration: BoxDecoration(
+                    color: isLight
+                        ? Colors.white.withValues(alpha: 0.72)
+                        : Colors.white.withValues(alpha: 0.05),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: const Color(
+                        0xFFE50914,
+                      ).withValues(alpha: isLight ? 0.20 : 0.32),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 38,
+                        height: 38,
+                        decoration: BoxDecoration(
+                          color: const Color(
+                            0xFFE50914,
+                          ).withValues(alpha: 0.14),
+                          borderRadius: BorderRadius.circular(11),
+                        ),
+                        child: const Icon(
+                          Icons.code_rounded,
+                          color: Colors.white,
+                          size: 18,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            _copy(
+                              CompanyInfo.developerCreditAr,
+                              CompanyInfo.developerCreditEn,
+                            ),
+                            style: TextStyle(
+                              color: mutedColor,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 3),
+                          SelectableText(
+                            _copy(
+                              CompanyInfo.developerNameAr,
+                              CompanyInfo.developerNameEn,
+                            ),
+                            style: TextStyle(
+                              color: isLight
+                                  ? Colors.black87
+                                  : Colors.white.withValues(alpha: 0.92),
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              );
+
+              final copyright = Text(
+                '© ${DateTime.now().year} ${CompanyInfo.nameEn}',
+                style: TextStyle(color: mutedColor, fontSize: 12),
+              );
+
+              if (compact) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    developerCredit,
+                    const SizedBox(height: 12),
+                    copyright,
+                  ],
+                );
+              }
+
+              return Row(
+                children: [
+                  Expanded(child: developerCredit),
+                  const SizedBox(width: 16),
+                  copyright,
+                ],
+              );
+            },
           ),
         ],
       ),
@@ -1692,10 +2220,11 @@ class _HomeScreenState extends State<HomeScreen>
 
 class _StoryCategory {
   final String value;
-  final String label;
+  final String labelAr;
+  final String labelEn;
   final IconData icon;
 
-  const _StoryCategory(this.value, this.label, this.icon);
+  const _StoryCategory(this.value, this.labelAr, this.labelEn, this.icon);
 }
 
 class _ServiceItem {
@@ -1983,44 +2512,81 @@ class _DailyStoryCircle extends StatelessWidget {
 }
 
 class _MetricTile extends StatelessWidget {
-  final String value;
+  final String? value;
   final String label;
+  final IconData icon;
 
-  const _MetricTile(this.value, this.label);
+  const _MetricTile({this.value, required this.label, required this.icon});
 
   @override
   Widget build(BuildContext context) {
     final isLight = Theme.of(context).brightness == Brightness.light;
+    final titleColor = isLight ? Colors.black : Colors.white;
+    final subtleColor = isLight ? Colors.black54 : Colors.white70;
+    const accentColor = Color(0xFFE50914);
+
     return Expanded(
       child: Container(
-        height: 72,
+        height: 76,
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
         decoration: BoxDecoration(
-          color: isLight
-              ? Colors.white.withValues(alpha: 0.50)
-              : Colors.black.withValues(alpha: 0.28),
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: isLight
+                ? [
+                    Colors.white.withValues(alpha: 0.88),
+                    Colors.white.withValues(alpha: 0.56),
+                  ]
+                : [
+                    Colors.white.withValues(alpha: 0.11),
+                    Colors.black.withValues(alpha: 0.20),
+                  ],
+          ),
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
             color: isLight
-                ? Colors.black.withValues(alpha: 0.10)
-                : Colors.white.withValues(alpha: 0.10),
+                ? accentColor.withValues(alpha: 0.20)
+                : Colors.white.withValues(alpha: 0.14),
           ),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(
-              value,
-              style: TextStyle(
-                color: isLight ? Colors.black : Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
+            SizedBox(
+              height: 27,
+              child: Center(
+                child: (value != null && value!.isNotEmpty)
+                    ? FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(icon, color: accentColor, size: 17),
+                            const SizedBox(width: 6),
+                            Text(
+                              value!,
+                              style: TextStyle(
+                                color: titleColor,
+                                fontSize: 18,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    : Icon(icon, color: accentColor, size: 25),
               ),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 7),
             Text(
               label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                color: isLight ? Colors.black54 : Colors.white60,
+                color: subtleColor,
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
               ),
             ),
           ],
@@ -2133,7 +2699,7 @@ class _AdBanner extends StatelessWidget {
                     const SizedBox(height: 6),
                     Text(
                       media?.description ??
-                          'إعلان متحرك بخط أحمر وأسود وواجهة زجاجية.',
+                          'إعلان متحرك بهوية بصرية سينمائية ولمسات عرض حديثة.',
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
@@ -2170,6 +2736,455 @@ class _AdBanner extends StatelessWidget {
   ];
 }
 
+class _ServiceCard extends StatefulWidget {
+  final _ServiceItem service;
+  final VoidCallback onTap;
+
+  const _ServiceCard({required this.service, required this.onTap});
+
+  @override
+  State<_ServiceCard> createState() => _ServiceCardState();
+}
+
+class _ServiceCardState extends State<_ServiceCard> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final isLight = Theme.of(context).brightness == Brightness.light;
+    final isRtl = Directionality.of(context) == TextDirection.rtl;
+    final titleColor = isLight ? Colors.black : Colors.white;
+    final subtitleColor = isLight ? Colors.black54 : Colors.white70;
+    const accentColor = Color(0xFFE50914);
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOutCubic,
+        transform: Matrix4.translationValues(0, _isHovered ? -3 : 0, 0),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(8),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: isLight ? 0.08 : 0.26),
+              blurRadius: _isHovered ? 24 : 16,
+              offset: Offset(0, _isHovered ? 14 : 9),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: widget.onTap,
+                child: Ink(
+                  decoration: BoxDecoration(
+                    color: isLight
+                        ? Colors.white.withValues(alpha: 0.76)
+                        : const Color(0xFF241015).withValues(alpha: 0.78),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: _isHovered
+                          ? accentColor.withValues(alpha: 0.68)
+                          : isLight
+                          ? Colors.black.withValues(alpha: 0.10)
+                          : Colors.white.withValues(alpha: 0.13),
+                    ),
+                    gradient: LinearGradient(
+                      begin: Alignment.topRight,
+                      end: Alignment.bottomLeft,
+                      colors: isLight
+                          ? [
+                              Colors.white.withValues(alpha: 0.92),
+                              accentColor.withValues(alpha: 0.05),
+                              Colors.white.withValues(alpha: 0.62),
+                            ]
+                          : [
+                              Colors.white.withValues(alpha: 0.08),
+                              accentColor.withValues(
+                                alpha: _isHovered ? 0.15 : 0.08,
+                              ),
+                              Colors.black.withValues(alpha: 0.20),
+                            ],
+                    ),
+                  ),
+                  child: Stack(
+                    children: [
+                      PositionedDirectional(
+                        start: 0,
+                        top: 0,
+                        bottom: 0,
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 180),
+                          width: _isHovered ? 5 : 3,
+                          color: accentColor.withValues(
+                            alpha: _isHovered ? 0.92 : 0.56,
+                          ),
+                        ),
+                      ),
+                      PositionedDirectional(
+                        end: 12,
+                        bottom: -28,
+                        child: Icon(
+                          widget.service.icon,
+                          size: 92,
+                          color: accentColor.withValues(alpha: 0.055),
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsetsDirectional.fromSTEB(
+                          18,
+                          16,
+                          16,
+                          16,
+                        ),
+                        child: Row(
+                          children: [
+                            _ServiceIconBadge(
+                              icon: widget.service.icon,
+                              isHovered: _isHovered,
+                            ),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    widget.service.title,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      color: titleColor,
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 15,
+                                      height: 1.15,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 7),
+                                  Text(
+                                    widget.service.subtitle,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      color: subtitleColor,
+                                      fontSize: 12,
+                                      height: 1.45,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            AnimatedOpacity(
+                              opacity: _isHovered ? 1 : 0.62,
+                              duration: const Duration(milliseconds: 180),
+                              child: Icon(
+                                isRtl
+                                    ? Icons.arrow_back_ios_new
+                                    : Icons.arrow_forward_ios,
+                                color: _isHovered
+                                    ? accentColor
+                                    : subtitleColor.withValues(alpha: 0.78),
+                                size: 15,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ServiceIconBadge extends StatelessWidget {
+  final IconData icon;
+  final bool isHovered;
+
+  const _ServiceIconBadge({required this.icon, required this.isHovered});
+
+  @override
+  Widget build(BuildContext context) {
+    const accentColor = Color(0xFFE50914);
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 180),
+      curve: Curves.easeOutCubic,
+      width: 54,
+      height: 54,
+      decoration: BoxDecoration(
+        color: accentColor.withValues(alpha: isHovered ? 0.24 : 0.15),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: accentColor.withValues(alpha: isHovered ? 1 : 0.78),
+        ),
+        boxShadow: [
+          if (isHovered)
+            BoxShadow(
+              color: accentColor.withValues(alpha: 0.25),
+              blurRadius: 16,
+              offset: const Offset(0, 8),
+            ),
+        ],
+      ),
+      child: Icon(icon, color: Colors.white, size: 24),
+    );
+  }
+}
+
+class _TeamMemberSpotlightCard extends StatelessWidget {
+  final TeamMember member;
+  final bool isLiked;
+  final VoidCallback onTap;
+  final Future<void> Function() onLike;
+  final VoidCallback onComment;
+
+  const _TeamMemberSpotlightCard({
+    required this.member,
+    required this.isLiked,
+    required this.onTap,
+    required this.onLike,
+    required this.onComment,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isLight = Theme.of(context).brightness == Brightness.light;
+    final titleColor = isLight ? Colors.black : Colors.white;
+    final subtitleColor = isLight ? Colors.black54 : Colors.white70;
+
+    return Material(
+      color: Colors.transparent,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(8),
+          onTap: onTap,
+          child: Ink(
+            decoration: BoxDecoration(
+              color: isLight
+                  ? Colors.white.withValues(alpha: 0.68)
+                  : Colors.white.withValues(alpha: 0.06),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: isLight
+                    ? Colors.black.withValues(alpha: 0.10)
+                    : Colors.white.withValues(alpha: 0.12),
+              ),
+              gradient: LinearGradient(
+                begin: Alignment.topRight,
+                end: Alignment.bottomLeft,
+                colors: [
+                  const Color(
+                    0xFFE50914,
+                  ).withValues(alpha: isLight ? 0.07 : 0.12),
+                  Colors.transparent,
+                  Colors.black.withValues(alpha: isLight ? 0.02 : 0.08),
+                ],
+              ),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: SizedBox(
+                          width: 68,
+                          height: 68,
+                          child: member.photoUrl.trim().isEmpty
+                              ? Container(
+                                  color: Colors.white10,
+                                  child: const Icon(
+                                    Icons.person_outline,
+                                    color: Colors.white70,
+                                  ),
+                                )
+                              : AppNetworkImage(
+                                  url: member.photoUrl,
+                                  fit: BoxFit.cover,
+                                  placeholder: const ColoredBox(
+                                    color: Colors.white10,
+                                  ),
+                                  errorWidget: const ColoredBox(
+                                    color: Colors.white10,
+                                  ),
+                                ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              member.name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: titleColor,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              member.role,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: subtitleColor,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(
+                                  0xFFE50914,
+                                ).withValues(alpha: 0.14),
+                                borderRadius: BorderRadius.circular(999),
+                              ),
+                              child: Text(
+                                '${member.portfolio.length} ${member.portfolio.length == 1 ? 'عمل' : 'أعمال'}',
+                                style: TextStyle(
+                                  color: titleColor,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            TeamMemberMetricChips(member: member, dense: true),
+                          ],
+                        ),
+                      ),
+                      Icon(
+                        Icons.arrow_forward_ios,
+                        color: subtitleColor,
+                        size: 16,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      primary: false,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (member.bio.trim().isNotEmpty)
+                            Text(
+                              member.bio,
+                              style: TextStyle(
+                                color: subtitleColor,
+                                height: 1.55,
+                              ),
+                            ),
+                          if (member.bio.trim().isNotEmpty &&
+                              member.skills.isNotEmpty)
+                            const SizedBox(height: 14),
+                          if (member.skills.isNotEmpty)
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: member.skills
+                                  .take(3)
+                                  .map(
+                                    (skill) => Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 10,
+                                        vertical: 7,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withValues(
+                                          alpha: 0.06,
+                                        ),
+                                        borderRadius: BorderRadius.circular(
+                                          999,
+                                        ),
+                                        border: Border.all(
+                                          color: Colors.white12,
+                                        ),
+                                      ),
+                                      child: Text(
+                                        skill,
+                                        style: TextStyle(
+                                          color: titleColor,
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ),
+                                  )
+                                  .toList(growable: false),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: FilledButton.icon(
+                          onPressed: () async => onLike(),
+                          icon: Icon(
+                            isLiked
+                                ? Icons.favorite_rounded
+                                : Icons.favorite_border,
+                          ),
+                          label: Text(
+                            isLiked ? 'تم الإعجاب' : 'إعجاب',
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: onComment,
+                          icon: const Icon(Icons.mode_comment_outlined),
+                          label: Text(
+                            'التعليقات',
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(color: titleColor),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _IconBox extends StatelessWidget {
   final IconData icon;
 
@@ -2198,87 +3213,160 @@ class _MediaPreview extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.sizeOf(context).width;
+    final isRtl = Directionality.of(context) == TextDirection.rtl;
     final cardWidth = screenWidth < 600
         ? ((screenWidth - 44) / 2).clamp(136.0, 190.0)
         : screenWidth < 900
         ? 210.0
         : 230.0;
 
-    return InkWell(
-      borderRadius: BorderRadius.circular(8),
-      onTap: () {
-        if (media.isVideo) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => VideoPlayerScreen(media: media)),
-          );
-          return;
-        }
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => MediaDetailScreen(media: media),
-          ),
-        );
-      },
-      child: SizedBox(
-        width: cardWidth,
-        child: ClipRRect(
+    return SizedBox(
+      width: cardWidth,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
           borderRadius: BorderRadius.circular(8),
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              const ColoredBox(color: Colors.black),
-              if (media.previewImageUrl != null)
-                Positioned.fill(
-                  child: AppNetworkImage(
-                    url: media.previewImageUrl!,
-                    fit: BoxFit.cover,
-                    placeholder: Container(color: Colors.white10),
-                    errorWidget: Container(
-                      color: Colors.white10,
-                      child: const Icon(
-                        Icons.broken_image_outlined,
-                        color: Colors.white,
+          onTap: () {
+            if (media.isVideo) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => VideoPlayerScreen(media: media),
+                ),
+              );
+              return;
+            }
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => MediaDetailScreen(media: media),
+              ),
+            );
+          },
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.white12),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.24),
+                  blurRadius: 20,
+                  offset: const Offset(0, 12),
+                ),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  const ColoredBox(color: Colors.black),
+                  if (media.previewImageUrl != null)
+                    Positioned.fill(
+                      child: AppNetworkImage(
+                        url: media.previewImageUrl!,
+                        fit: BoxFit.cover,
+                        placeholder: Container(color: Colors.white10),
+                        errorWidget: Container(
+                          color: Colors.white10,
+                          child: const Icon(
+                            Icons.broken_image_outlined,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ),
+                  DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.black.withValues(alpha: 0.08),
+                          Colors.transparent,
+                          Colors.black.withValues(alpha: 0.92),
+                        ],
+                        stops: const [0.0, 0.35, 1.0],
                       ),
                     ),
                   ),
-                ),
-              DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.transparent,
-                      Colors.black.withValues(alpha: 0.86),
-                    ],
+                  PositionedDirectional(
+                    top: 10,
+                    start: 10,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 9,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.34),
+                        borderRadius: BorderRadius.circular(999),
+                        border: Border.all(color: Colors.white24),
+                      ),
+                      child: Icon(
+                        media.isVideo
+                            ? Icons.play_arrow_rounded
+                            : Icons.image_outlined,
+                        color: Colors.white,
+                        size: 16,
+                      ),
+                    ),
                   ),
-                ),
+                  if (media.isVideo)
+                    Container(
+                      margin: const EdgeInsets.all(12),
+                      alignment: Alignment.center,
+                      child: Container(
+                        width: 52,
+                        height: 52,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.90),
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.28),
+                              blurRadius: 20,
+                              offset: const Offset(0, 10),
+                            ),
+                          ],
+                        ),
+                        child: const Icon(
+                          Icons.play_arrow_rounded,
+                          color: Color(0xFFE50914),
+                          size: 30,
+                        ),
+                      ),
+                    ),
+                  PositionedDirectional(
+                    start: 10,
+                    end: 10,
+                    bottom: 10,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 9,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.42),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.white12),
+                      ),
+                      child: Text(
+                        media.title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: isRtl ? TextAlign.right : TextAlign.left,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                          height: 1.35,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-              if (media.isVideo)
-                const Center(
-                  child: Icon(
-                    Icons.play_circle_fill,
-                    color: Colors.white,
-                    size: 46,
-                  ),
-                ),
-              Positioned(
-                left: 12,
-                right: 12,
-                bottom: 10,
-                child: Text(
-                  media.title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       ),

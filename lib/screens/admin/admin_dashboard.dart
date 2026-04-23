@@ -2,12 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../models/media.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/about_provider.dart';
 import '../../providers/media_provider.dart';
 import '../../providers/response_provider.dart';
+import '../../providers/team_provider.dart';
 import '../../widgets/app_network_image.dart';
+import 'about_management_screen.dart';
 import 'upload_media_screen.dart';
 import 'responses_screen.dart';
 import 'service_requests_screen.dart';
+import 'team_management_screen.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -22,6 +26,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
   final List<Widget> _screens = [
     const AdminHomeScreen(),
     const UploadMediaScreen(),
+    const TeamManagementScreen(),
+    const AboutManagementScreen(),
     const AdminResponsesScreen(),
     const AdminServiceRequestsScreen(),
   ];
@@ -29,6 +35,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
   static const _titles = [
     'لوحة التحكم',
     'رفع المحتوى',
+    'فريق العمل',
+    'من نحن',
     'الردود',
     'طلبات الخدمات',
   ];
@@ -61,6 +69,14 @@ class _AdminDashboardState extends State<AdminDashboard> {
             label: 'الرئيسية',
           ),
           BottomNavigationBarItem(icon: Icon(Icons.upload), label: 'رفع'),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.groups_2_outlined),
+            label: 'الفريق',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.info_outline),
+            label: 'من نحن',
+          ),
           BottomNavigationBarItem(icon: Icon(Icons.feedback), label: 'الردود'),
           BottomNavigationBarItem(
             icon: Icon(Icons.assignment_outlined),
@@ -79,6 +95,8 @@ class AdminHomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final mediaProvider = Provider.of<MediaProvider>(context);
     final responseProvider = Provider.of<ResponseProvider>(context);
+    final teamProvider = Provider.of<TeamProvider>(context);
+    final aboutProvider = Provider.of<AboutProvider>(context);
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -144,6 +162,18 @@ class AdminHomeScreen extends StatelessWidget {
                         '${mediaProvider.mediaList.fold(0, (sum, item) => sum + item.views)}',
                         Icons.visibility,
                         const Color(0xFFE50914),
+                      ),
+                      _buildStatCard(
+                        'Team Members',
+                        '${teamProvider.members.length}',
+                        Icons.groups_2_outlined,
+                        Colors.purpleAccent,
+                      ),
+                      _buildStatCard(
+                        'About Sections',
+                        '${aboutProvider.page.sections.length}',
+                        Icons.info_outline,
+                        Colors.tealAccent,
                       ),
                     ],
                   ),
