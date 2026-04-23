@@ -1,11 +1,8 @@
-import 'dart:html' as html;
-import 'dart:ui_web' as ui_web;
-
-import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart';
 
 import 'app_network_image_impl.dart';
 
-class AppNetworkImageImplFactory extends StatelessWidget
+class AppNetworkImageImplFactory extends StatefulWidget
     implements AppNetworkImageImpl {
   final String url;
   final BoxFit fit;
@@ -24,10 +21,32 @@ class AppNetworkImageImplFactory extends StatelessWidget
     this.errorWidget,
   });
 
-  static int _id = 0;
-  static final Map<String, String> _viewTypes = {};
+  @override
+  State<AppNetworkImageImplFactory> createState() =>
+      _AppNetworkImageImplFactoryState();
+}
 
-  static String? _altFirebaseBucketUrl(String url) {
+class _AppNetworkImageImplFactoryState
+    extends State<AppNetworkImageImplFactory> {
+  late String _currentUrl;
+  bool _triedAlt = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentUrl = widget.url;
+  }
+
+  @override
+  void didUpdateWidget(covariant AppNetworkImageImplFactory oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.url != widget.url) {
+      _currentUrl = widget.url;
+      _triedAlt = false;
+    }
+  }
+
+  String? _altFirebaseBucketUrl(String url) {
     if (url.contains('.firebasestorage.app')) {
       return url.replaceAll('.firebasestorage.app', '.appspot.com');
     }
@@ -37,93 +56,63 @@ class AppNetworkImageImplFactory extends StatelessWidget
     return null;
   }
 
-  String _resolveViewType() {
-    final key = '$url|$fit';
-    final existing = _viewTypes[key];
-    if (existing != null) return existing;
-
-    final viewType = 'app-network-image-${_id++}';
-    _viewTypes[key] = viewType;
-
-    ui_web.platformViewRegistry.registerViewFactory(viewType, (int viewId) {
-      final container = html.DivElement()
-        ..style.width = '100%'
-        ..style.height = '100%'
-        ..style.overflow = 'hidden';
-
-      final img = html.ImageElement()
-        ..src = url
-        ..style.width = '100%'
-        ..style.height = '100%'
-        ..style.objectFit = _cssObjectFit(fit)
-        ..style.display = 'block'
-        ..style.opacity = '0'
-        ..style.visibility = 'hidden'
-        ..style.transition = 'opacity 160ms ease';
-
-      var triedAlt = false;
-      img.onLoad.listen((_) {
-        img.style.opacity = '1';
-        img.style.visibility = 'visible';
-      });
-      img.onError.listen((_) {
-        if (!triedAlt) {
-          final alt = _altFirebaseBucketUrl(img.src ?? url);
-          if (alt != null && alt != img.src) {
-            triedAlt = true;
-            img.src = alt;
-            return;
-          }
-        }
-        // Keep the element hidden so the Flutter placeholder behind remains visible.
-        img.style.opacity = '0';
-        img.style.visibility = 'hidden';
-        img.style.display = 'none';
-      });
-
-      container.append(img);
-      return container;
-    });
-
-    return viewType;
-  }
-
-  static String _cssObjectFit(BoxFit fit) {
-    switch (fit) {
-      case BoxFit.contain:
-        return 'contain';
-      case BoxFit.fill:
-        return 'fill';
-      case BoxFit.none:
-        return 'none';
-      case BoxFit.scaleDown:
-        return 'scale-down';
-      case BoxFit.cover:
-      case BoxFit.fitHeight:
-      case BoxFit.fitWidth:
-        return 'cover';
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    final viewType = _resolveViewType();
-    final image = HtmlElementView(viewType: viewType);
+    final finiteWidth = widget.width?.isFinite == true ? widget.width : null;
+    final finiteHeight = widget.height?.isFinite == true ? widget.height : null;
 
-    final constrained = (width != null || height != null)
-        ? SizedBox(width: width, height: height, child: image)
-        : image;
+    return SizedBox(
+      width: finiteWidth,
+      height: finiteHeight,
+      child: Image.network(
+        _currentUrl,
+        fit: widget.fit,
+        width: finiteWidth,
+        height: finiteHeight,
+        alignment: Alignment.center,
+        filterQuality: FilterQuality.high,
+        webHtmlElementStrategy: WebHtmlElementStrategy.prefer,
+        frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+          if (wasSynchronouslyLoaded || frame != null) {
+            return child;
+          }
+          return widget.placeholder ??
+              const SizedBox.expand(
+                child: ColoredBox(color: Colors.transparent),
+              );
+        },
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+          return widget.placeholder ??
+              const SizedBox.expand(
+                child: ColoredBox(color: Colors.transparent),
+              );
+        },
+        errorBuilder: (context, error, stackTrace) {
+          if (!_triedAlt) {
+            final alt = _altFirebaseBucketUrl(_currentUrl);
+            if (alt != null && alt != _currentUrl) {
+              _triedAlt = true;
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted) {
+                  setState(() {
+                    _currentUrl = alt;
+                  });
+                }
+              });
+              return widget.placeholder ??
+                  const SizedBox.expand(
+                    child: ColoredBox(color: Colors.transparent),
+                  );
+            }
+          }
 
-    if (placeholder == null && errorWidget == null) return constrained;
-
-    // We can't reliably detect load progress/errors from HtmlElementView,
-    // so we keep the placeholder behind it as a graceful fallback.
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        if (placeholder != null) placeholder!,
-        constrained,
-      ],
+          return widget.errorWidget ??
+              const SizedBox.expand(
+                child: ColoredBox(color: Colors.transparent),
+              );
+        },
+      ),
     );
   }
 }

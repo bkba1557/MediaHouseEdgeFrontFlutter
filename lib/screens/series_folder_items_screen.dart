@@ -21,7 +21,8 @@ class SeriesFolderItemsScreen extends StatefulWidget {
   });
 
   @override
-  State<SeriesFolderItemsScreen> createState() => _SeriesFolderItemsScreenState();
+  State<SeriesFolderItemsScreen> createState() =>
+      _SeriesFolderItemsScreenState();
 }
 
 class _SeriesFolderItemsScreenState extends State<SeriesFolderItemsScreen> {
@@ -34,8 +35,10 @@ class _SeriesFolderItemsScreenState extends State<SeriesFolderItemsScreen> {
   }
 
   Future<void> _load() async {
-    await Provider.of<MediaProvider>(context, listen: false)
-        .fetchMedia(category: 'series_movies');
+    await Provider.of<MediaProvider>(
+      context,
+      listen: false,
+    ).fetchMedia(category: 'series_movies');
   }
 
   Future<void> _openRequest() async {
@@ -137,8 +140,9 @@ class _SeriesFolderItemsScreenState extends State<SeriesFolderItemsScreen> {
                   );
                 }
 
-                final playlist =
-                    folderItems.where((m) => m.isVideo).toList(growable: false);
+                final playlist = folderItems
+                    .where((m) => m.isVideo)
+                    .toList(growable: false);
 
                 return LayoutBuilder(
                   builder: (context, constraints) {
@@ -146,10 +150,10 @@ class _SeriesFolderItemsScreenState extends State<SeriesFolderItemsScreen> {
                     final columns = width >= 1200
                         ? 5
                         : width >= 960
-                            ? 4
-                            : width >= 720
-                                ? 3
-                                : 2;
+                        ? 4
+                        : width >= 720
+                        ? 3
+                        : 2;
 
                     return GridView.builder(
                       padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
@@ -260,7 +264,7 @@ class _EpisodeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final thumb = (media.thumbnail ?? '').trim();
+    final thumb = (media.previewImageUrl ?? '').trim();
     return Material(
       color: Colors.transparent,
       borderRadius: BorderRadius.circular(16),
@@ -284,10 +288,11 @@ class _EpisodeCard extends StatelessWidget {
             child: Stack(
               fit: StackFit.expand,
               children: [
+                const ColoredBox(color: Colors.black),
                 if (thumb.isNotEmpty)
                   AppNetworkImage(
                     url: thumb,
-                    fit: BoxFit.cover,
+                    fit: BoxFit.contain,
                     placeholder: const ColoredBox(color: Colors.white10),
                     errorWidget: const ColoredBox(color: Colors.white10),
                   )
@@ -416,7 +421,11 @@ class _ErrorState extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.wifi_off_outlined, size: 64, color: Colors.white54),
+              const Icon(
+                Icons.wifi_off_outlined,
+                size: 64,
+                color: Colors.white54,
+              ),
               const SizedBox(height: 12),
               const Text(
                 'حصل خطأ أثناء تحميل المحتوى',
@@ -442,4 +451,3 @@ class _ErrorState extends StatelessWidget {
     );
   }
 }
-

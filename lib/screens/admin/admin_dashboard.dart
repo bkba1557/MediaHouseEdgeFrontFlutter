@@ -61,10 +61,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
             label: 'الرئيسية',
           ),
           BottomNavigationBarItem(icon: Icon(Icons.upload), label: 'رفع'),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.feedback),
-            label: 'الردود',
-          ),
+          BottomNavigationBarItem(icon: Icon(Icons.feedback), label: 'الردود'),
           BottomNavigationBarItem(
             icon: Icon(Icons.assignment_outlined),
             label: 'الطلبات',
@@ -90,13 +87,13 @@ class AdminHomeScreen extends StatelessWidget {
         final statColumns = width >= 1100
             ? 4
             : width >= 720
-                ? 2
-                : 1;
+            ? 2
+            : 1;
         final statAspectRatio = width >= 1100
             ? 2.8
             : width >= 720
-                ? 2.4
-                : 3.6;
+            ? 2.4
+            : 3.6;
 
         return SingleChildScrollView(
           padding: EdgeInsets.fromLTRB(
@@ -202,28 +199,39 @@ class AdminHomeScreen extends StatelessWidget {
                     child: Stack(
                       fit: StackFit.expand,
                       children: [
-                        AppNetworkImage(
-                          url: media.thumbnail ?? media.url,
-                          fit: BoxFit.cover,
-                          placeholder: Container(
-                            color: Colors.black.withValues(alpha: 0.20),
-                            child: const Center(
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Color(0xFFE50914),
+                        if (media.previewImageUrl != null)
+                          AppNetworkImage(
+                            url: media.previewImageUrl!,
+                            fit: BoxFit.cover,
+                            placeholder: Container(
+                              color: Colors.black.withValues(alpha: 0.20),
+                              child: const Center(
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Color(0xFFE50914),
+                                ),
                               ),
                             ),
-                          ),
-                          errorWidget: Container(
+                            errorWidget: Container(
+                              color: Colors.black.withValues(alpha: 0.20),
+                              child: const Center(
+                                child: Icon(
+                                  Icons.broken_image_outlined,
+                                  color: Colors.white70,
+                                ),
+                              ),
+                            ),
+                          )
+                        else
+                          Container(
                             color: Colors.black.withValues(alpha: 0.20),
                             child: const Center(
                               child: Icon(
-                                Icons.broken_image_outlined,
+                                Icons.play_circle_outline,
                                 color: Colors.white70,
                               ),
                             ),
                           ),
-                        ),
                         Positioned(
                           top: 6,
                           right: 6,
@@ -284,13 +292,14 @@ class AdminHomeScreen extends StatelessWidget {
   }) async {
     final token = authProvider.token;
     if (token == null || token.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Missing auth token')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Missing auth token')));
       return;
     }
 
-    final confirmed = await showDialog<bool>(
+    final confirmed =
+        await showDialog<bool>(
           context: context,
           builder: (dialogContext) => AlertDialog(
             title: const Text('Delete media?'),
@@ -318,14 +327,14 @@ class AdminHomeScreen extends StatelessWidget {
     try {
       await mediaProvider.deleteMedia(media.id, token);
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Deleted')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Deleted')));
     } catch (error) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Delete failed: $error')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Delete failed: $error')));
     }
   }
 
@@ -337,18 +346,22 @@ class AdminHomeScreen extends StatelessWidget {
   }) async {
     final token = authProvider.token;
     if (token == null || token.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Missing auth token')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Missing auth token')));
       return;
     }
 
     final titleController = TextEditingController(text: media.title);
-    final descriptionController = TextEditingController(text: media.description);
-    final collectionTitleController =
-        TextEditingController(text: media.collectionTitle ?? '');
-    final sequenceController =
-        TextEditingController(text: media.sequence?.toString() ?? '');
+    final descriptionController = TextEditingController(
+      text: media.description,
+    );
+    final collectionTitleController = TextEditingController(
+      text: media.collectionTitle ?? '',
+    );
+    final sequenceController = TextEditingController(
+      text: media.sequence?.toString() ?? '',
+    );
 
     const typeOptions = ['image', 'video'];
     const categoryOptions = [
@@ -370,12 +383,14 @@ class AdminHomeScreen extends StatelessWidget {
     ];
 
     String type = typeOptions.contains(media.type) ? media.type : 'image';
-    String category =
-        categoryOptions.contains(media.category) ? media.category : 'film';
+    String category = categoryOptions.contains(media.category)
+        ? media.category
+        : 'film';
 
     bool saved = false;
     try {
-      saved = await showDialog<bool>(
+      saved =
+          await showDialog<bool>(
             context: context,
             builder: (dialogContext) => StatefulBuilder(
               builder: (dialogContext, setDialogState) => AlertDialog(
@@ -395,8 +410,9 @@ class AdminHomeScreen extends StatelessWidget {
                           controller: descriptionController,
                           minLines: 2,
                           maxLines: 4,
-                          decoration:
-                              const InputDecoration(labelText: 'Description'),
+                          decoration: const InputDecoration(
+                            labelText: 'Description',
+                          ),
                         ),
                         const SizedBox(height: 10),
                         DropdownButtonFormField<String>(
@@ -410,15 +426,15 @@ class AdminHomeScreen extends StatelessWidget {
                                 ),
                               )
                               .toList(),
-                          onChanged: (value) => setDialogState(
-                            () => type = value ?? type,
-                          ),
+                          onChanged: (value) =>
+                              setDialogState(() => type = value ?? type),
                         ),
                         const SizedBox(height: 10),
                         DropdownButtonFormField<String>(
                           value: category,
-                          decoration:
-                              const InputDecoration(labelText: 'Category'),
+                          decoration: const InputDecoration(
+                            labelText: 'Category',
+                          ),
                           items: categoryOptions
                               .map(
                                 (value) => DropdownMenuItem(
@@ -484,23 +500,29 @@ class AdminHomeScreen extends StatelessWidget {
         description: updatedDescription,
         type: type,
         category: category,
-        collectionTitle: category == 'series_movies' && updatedCollectionTitle.isNotEmpty
+        collectionTitle:
+            category == 'series_movies' && updatedCollectionTitle.isNotEmpty
             ? updatedCollectionTitle
             : null,
-        collectionKey: category == 'series_movies' && updatedCollectionTitle.isNotEmpty
-            ? updatedCollectionTitle.trim().toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '_').replaceAll(RegExp(r'^_+|_+$'), '')
+        collectionKey:
+            category == 'series_movies' && updatedCollectionTitle.isNotEmpty
+            ? updatedCollectionTitle
+                  .trim()
+                  .toLowerCase()
+                  .replaceAll(RegExp(r'[^a-z0-9]+'), '_')
+                  .replaceAll(RegExp(r'^_+|_+$'), '')
             : null,
         sequence: category == 'series_movies' ? updatedSequence : null,
       );
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Updated')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Updated')));
     } catch (error) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Update failed: $error')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Update failed: $error')));
     } finally {
       titleController.dispose();
       descriptionController.dispose();

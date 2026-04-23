@@ -19,22 +19,128 @@ class _PhoneCountry {
   });
 }
 
+class _ArText {
+  static const sheetTitle =
+      '\u062A\u0642\u062F\u064A\u0645 \u0637\u0644\u0628 \u0627\u0644\u062E\u062F\u0645\u0629';
+  static const nameLabel = '\u0627\u0644\u0627\u0633\u0645';
+  static const nameRequired =
+      '\u0627\u0643\u062A\u0628 \u0627\u0633\u0645\u0643';
+  static const emailLabel =
+      '\u0627\u0644\u0628\u0631\u064A\u062F \u0627\u0644\u0625\u0644\u0643\u062A\u0631\u0648\u0646\u064A';
+  static const emailRequired =
+      '\u0627\u0643\u062A\u0628 \u0628\u0631\u064A\u062F\u0643 \u0627\u0644\u0625\u0644\u0643\u062A\u0631\u0648\u0646\u064A';
+  static const emailInvalid =
+      '\u0628\u0631\u064A\u062F \u063A\u064A\u0631 \u0635\u062D\u064A\u062D';
+  static const countryLabel = '\u0627\u0644\u062F\u0648\u0644\u0629';
+  static const phoneLabel =
+      '\u0631\u0642\u0645 \u0627\u0644\u062C\u0648\u0627\u0644';
+  static const phoneRequired =
+      '\u0627\u0643\u062A\u0628 \u0631\u0642\u0645 \u0627\u0644\u062C\u0648\u0627\u0644';
+  static const phoneInvalid =
+      '\u0631\u0642\u0645 \u0627\u0644\u062C\u0648\u0627\u0644 \u063A\u064A\u0631 \u0635\u062D\u064A\u062D';
+  static const detailsLabel =
+      '\u062A\u0641\u0627\u0635\u064A\u0644 \u0627\u0644\u0637\u0644\u0628';
+  static const detailsRequired =
+      '\u0627\u0643\u062A\u0628 \u062A\u0641\u0627\u0635\u064A\u0644 \u0627\u0644\u0637\u0644\u0628';
+  static const sendLabel =
+      '\u0625\u0631\u0633\u0627\u0644 \u0627\u0644\u0637\u0644\u0628';
+  static const sentOk =
+      '\u062A\u0645 \u0625\u0631\u0633\u0627\u0644 \u0637\u0644\u0628\u0643 \u0628\u0646\u062C\u0627\u062D';
+  static const sendFailedPrefix =
+      '\u0641\u0634\u0644 \u0627\u0644\u0625\u0631\u0633\u0627\u0644';
+}
+
 const List<_PhoneCountry> _phoneCountries = [
-  _PhoneCountry(nameAr: 'السعودية', iso2: 'SA', dialCode: '+966', flag: '🇸🇦'),
-  _PhoneCountry(nameAr: 'الإمارات', iso2: 'AE', dialCode: '+971', flag: '🇦🇪'),
-  _PhoneCountry(nameAr: 'الكويت', iso2: 'KW', dialCode: '+965', flag: '🇰🇼'),
-  _PhoneCountry(nameAr: 'قطر', iso2: 'QA', dialCode: '+974', flag: '🇶🇦'),
-  _PhoneCountry(nameAr: 'البحرين', iso2: 'BH', dialCode: '+973', flag: '🇧🇭'),
-  _PhoneCountry(nameAr: 'عُمان', iso2: 'OM', dialCode: '+968', flag: '🇴🇲'),
-  _PhoneCountry(nameAr: 'مصر', iso2: 'EG', dialCode: '+20', flag: '🇪🇬'),
-  _PhoneCountry(nameAr: 'الأردن', iso2: 'JO', dialCode: '+962', flag: '🇯🇴'),
-  _PhoneCountry(nameAr: 'لبنان', iso2: 'LB', dialCode: '+961', flag: '🇱🇧'),
-  _PhoneCountry(nameAr: 'العراق', iso2: 'IQ', dialCode: '+964', flag: '🇮🇶'),
-  _PhoneCountry(nameAr: 'المغرب', iso2: 'MA', dialCode: '+212', flag: '🇲🇦'),
-  _PhoneCountry(nameAr: 'تونس', iso2: 'TN', dialCode: '+216', flag: '🇹🇳'),
-  _PhoneCountry(nameAr: 'الجزائر', iso2: 'DZ', dialCode: '+213', flag: '🇩🇿'),
-  _PhoneCountry(nameAr: 'أمريكا', iso2: 'US', dialCode: '+1', flag: '🇺🇸'),
-  _PhoneCountry(nameAr: 'بريطانيا', iso2: 'GB', dialCode: '+44', flag: '🇬🇧'),
+  _PhoneCountry(
+    nameAr: '\u0627\u0644\u0633\u0639\u0648\u062F\u064A\u0629',
+    iso2: 'SA',
+    dialCode: '+966',
+    flag: '\u{1F1F8}\u{1F1E6}',
+  ),
+  _PhoneCountry(
+    nameAr: '\u0627\u0644\u0625\u0645\u0627\u0631\u0627\u062A',
+    iso2: 'AE',
+    dialCode: '+971',
+    flag: '\u{1F1E6}\u{1F1EA}',
+  ),
+  _PhoneCountry(
+    nameAr: '\u0627\u0644\u0643\u0648\u064A\u062A',
+    iso2: 'KW',
+    dialCode: '+965',
+    flag: '\u{1F1F0}\u{1F1FC}',
+  ),
+  _PhoneCountry(
+    nameAr: '\u0642\u0637\u0631',
+    iso2: 'QA',
+    dialCode: '+974',
+    flag: '\u{1F1F6}\u{1F1E6}',
+  ),
+  _PhoneCountry(
+    nameAr: '\u0627\u0644\u0628\u062D\u0631\u064A\u0646',
+    iso2: 'BH',
+    dialCode: '+973',
+    flag: '\u{1F1E7}\u{1F1ED}',
+  ),
+  _PhoneCountry(
+    nameAr: '\u0639\u0645\u0627\u0646',
+    iso2: 'OM',
+    dialCode: '+968',
+    flag: '\u{1F1F4}\u{1F1F2}',
+  ),
+  _PhoneCountry(
+    nameAr: '\u0645\u0635\u0631',
+    iso2: 'EG',
+    dialCode: '+20',
+    flag: '\u{1F1EA}\u{1F1EC}',
+  ),
+  _PhoneCountry(
+    nameAr: '\u0627\u0644\u0623\u0631\u062F\u0646',
+    iso2: 'JO',
+    dialCode: '+962',
+    flag: '\u{1F1EF}\u{1F1F4}',
+  ),
+  _PhoneCountry(
+    nameAr: '\u0644\u0628\u0646\u0627\u0646',
+    iso2: 'LB',
+    dialCode: '+961',
+    flag: '\u{1F1F1}\u{1F1E7}',
+  ),
+  _PhoneCountry(
+    nameAr: '\u0627\u0644\u0639\u0631\u0627\u0642',
+    iso2: 'IQ',
+    dialCode: '+964',
+    flag: '\u{1F1EE}\u{1F1F6}',
+  ),
+  _PhoneCountry(
+    nameAr: '\u0627\u0644\u0645\u063A\u0631\u0628',
+    iso2: 'MA',
+    dialCode: '+212',
+    flag: '\u{1F1F2}\u{1F1E6}',
+  ),
+  _PhoneCountry(
+    nameAr: '\u062A\u0648\u0646\u0633',
+    iso2: 'TN',
+    dialCode: '+216',
+    flag: '\u{1F1F9}\u{1F1F3}',
+  ),
+  _PhoneCountry(
+    nameAr: '\u0627\u0644\u062C\u0632\u0627\u0626\u0631',
+    iso2: 'DZ',
+    dialCode: '+213',
+    flag: '\u{1F1E9}\u{1F1FF}',
+  ),
+  _PhoneCountry(
+    nameAr: '\u0623\u0645\u0631\u064A\u0643\u0627',
+    iso2: 'US',
+    dialCode: '+1',
+    flag: '\u{1F1FA}\u{1F1F8}',
+  ),
+  _PhoneCountry(
+    nameAr: '\u0628\u0631\u064A\u0637\u0627\u0646\u064A\u0627',
+    iso2: 'GB',
+    dialCode: '+44',
+    flag: '\u{1F1EC}\u{1F1E7}',
+  ),
 ];
 
 Future<void> showServiceRequestSheet(
@@ -86,7 +192,7 @@ Future<void> showServiceRequestSheet(
                           children: [
                             Expanded(
                               child: Text(
-                                'تقديم طلب الخدمة',
+                                _ArText.sheetTitle,
                                 style: Theme.of(context).textTheme.titleLarge
                                     ?.copyWith(fontWeight: FontWeight.w800),
                               ),
@@ -105,12 +211,12 @@ Future<void> showServiceRequestSheet(
                         TextFormField(
                           controller: nameController,
                           decoration: const InputDecoration(
-                            labelText: 'الاسم',
+                            labelText: _ArText.nameLabel,
                             border: OutlineInputBorder(),
                           ),
                           validator: (value) {
                             if (value == null || value.trim().isEmpty) {
-                              return 'اكتب اسمك';
+                              return _ArText.nameRequired;
                             }
                             return null;
                           },
@@ -119,17 +225,14 @@ Future<void> showServiceRequestSheet(
                         TextFormField(
                           controller: emailController,
                           decoration: const InputDecoration(
-                            labelText: 'البريد الإلكتروني',
+                            labelText: _ArText.emailLabel,
                             border: OutlineInputBorder(),
                           ),
                           validator: (value) {
                             final text = value?.trim() ?? '';
-                            if (text.isEmpty) {
-                              return 'اكتب بريدك الإلكتروني';
-                            }
-                            if (!text.contains('@')) {
-                              return 'بريد غير صحيح';
-                            }
+                            if (text.isEmpty) return _ArText.emailRequired;
+                            if (!text.contains('@'))
+                              return _ArText.emailInvalid;
                             return null;
                           },
                         ),
@@ -142,7 +245,7 @@ Future<void> showServiceRequestSheet(
                               child: DropdownButtonFormField<_PhoneCountry>(
                                 value: selectedCountry,
                                 decoration: const InputDecoration(
-                                  labelText: 'الدولة',
+                                  labelText: _ArText.countryLabel,
                                   border: OutlineInputBorder(),
                                 ),
                                 dropdownColor: const Color(0xFF1A1A1A),
@@ -168,11 +271,11 @@ Future<void> showServiceRequestSheet(
                               child: TextFormField(
                                 controller: phoneController,
                                 keyboardType: TextInputType.phone,
-                                inputFormatters: const [
+                                inputFormatters: [
                                   FilteringTextInputFormatter.digitsOnly,
                                 ],
                                 decoration: InputDecoration(
-                                  labelText: 'رقم الجوال',
+                                  labelText: _ArText.phoneLabel,
                                   hintText: selectedCountry.iso2 == 'SA'
                                       ? '5xxxxxxxx'
                                       : null,
@@ -180,11 +283,10 @@ Future<void> showServiceRequestSheet(
                                 ),
                                 validator: (value) {
                                   final text = value?.trim() ?? '';
-                                  if (text.isEmpty) {
-                                    return 'اكتب رقم الجوال';
-                                  }
+                                  if (text.isEmpty)
+                                    return _ArText.phoneRequired;
                                   if (text.length < 7 || text.length > 15) {
-                                    return 'رقم الجوال غير صحيح';
+                                    return _ArText.phoneInvalid;
                                   }
                                   return null;
                                 },
@@ -198,12 +300,12 @@ Future<void> showServiceRequestSheet(
                           minLines: 3,
                           maxLines: 6,
                           decoration: const InputDecoration(
-                            labelText: 'تفاصيل الطلب',
+                            labelText: _ArText.detailsLabel,
                             border: OutlineInputBorder(),
                           ),
                           validator: (value) {
                             if (value == null || value.trim().isEmpty) {
-                              return 'اكتب تفاصيل الطلب';
+                              return _ArText.detailsRequired;
                             }
                             return null;
                           },
@@ -247,21 +349,21 @@ Future<void> showServiceRequestSheet(
                                         navigator.pop();
                                         messenger.showSnackBar(
                                           const SnackBar(
-                                            content: Text(
-                                              'تم إرسال طلبك بنجاح',
-                                            ),
+                                            content: Text(_ArText.sentOk),
                                           ),
                                         );
                                       } catch (e) {
                                         messenger.showSnackBar(
                                           SnackBar(
-                                            content: Text('فشل الإرسال: $e'),
+                                            content: Text(
+                                              '${_ArText.sendFailedPrefix}: $e',
+                                            ),
                                           ),
                                         );
                                       }
                                     },
                               icon: const Icon(Icons.send),
-                              label: const Text('إرسال الطلب'),
+                              label: const Text(_ArText.sendLabel),
                             );
                           },
                         ),

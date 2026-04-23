@@ -22,8 +22,10 @@ class _SeriesFoldersScreenState extends State<SeriesFoldersScreen> {
   }
 
   Future<void> _load() async {
-    await Provider.of<MediaProvider>(context, listen: false)
-        .fetchMedia(category: 'series_movies');
+    await Provider.of<MediaProvider>(
+      context,
+      listen: false,
+    ).fetchMedia(category: 'series_movies');
   }
 
   Future<void> _openRequest() async {
@@ -76,10 +78,10 @@ class _SeriesFoldersScreenState extends State<SeriesFoldersScreen> {
               final columns = width >= 1200
                   ? 5
                   : width >= 960
-                      ? 4
-                      : width >= 720
-                          ? 3
-                          : 2;
+                  ? 4
+                  : width >= 720
+                  ? 3
+                  : 2;
               return GridView.builder(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
                 gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
@@ -168,7 +170,7 @@ class _FolderTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final coverUrl = preview?.thumbnail ?? preview?.url;
+    final coverUrl = preview?.previewImageUrl;
     return Material(
       color: Colors.transparent,
       borderRadius: BorderRadius.circular(16),
@@ -192,10 +194,11 @@ class _FolderTile extends StatelessWidget {
             child: Stack(
               fit: StackFit.expand,
               children: [
+                const ColoredBox(color: Colors.black),
                 if (coverUrl != null && coverUrl.trim().isNotEmpty)
                   AppNetworkImage(
                     url: coverUrl,
-                    fit: BoxFit.cover,
+                    fit: BoxFit.contain,
                     placeholder: const ColoredBox(color: Colors.white10),
                     errorWidget: const ColoredBox(color: Colors.white10),
                   )
@@ -326,7 +329,11 @@ class _ErrorState extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.wifi_off_outlined, size: 64, color: Colors.white54),
+              const Icon(
+                Icons.wifi_off_outlined,
+                size: 64,
+                color: Colors.white54,
+              ),
               const SizedBox(height: 12),
               const Text(
                 'حصل خطأ أثناء تحميل المحتوى',
@@ -356,4 +363,3 @@ class _ErrorState extends StatelessWidget {
 extension<T> on List<T> {
   T? get firstOrNull => isEmpty ? null : first;
 }
-

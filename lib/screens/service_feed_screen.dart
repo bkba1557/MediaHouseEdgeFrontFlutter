@@ -113,10 +113,10 @@ class _ServiceFeedScreenState extends State<ServiceFeedScreen> {
                     final columns = width >= 1100
                         ? 5
                         : width >= 860
-                            ? 4
-                            : width >= 560
-                                ? 3
-                                : 2;
+                        ? 4
+                        : width >= 560
+                        ? 3
+                        : 2;
                     return GridView.builder(
                       padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
@@ -198,10 +198,8 @@ class _MediaTile extends StatelessWidget {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) => ImageViewerScreen(
-                urls: [media.url],
-                titles: [media.title],
-              ),
+              builder: (_) =>
+                  ImageViewerScreen(urls: [media.url], titles: [media.title]),
             ),
           );
           return;
@@ -215,9 +213,7 @@ class _MediaTile extends StatelessWidget {
         }
         Navigator.push(
           context,
-          MaterialPageRoute(
-            builder: (_) => VideoPlayerScreen(media: media),
-          ),
+          MaterialPageRoute(builder: (_) => VideoPlayerScreen(media: media)),
         );
       },
       child: ClipRRect(
@@ -225,18 +221,20 @@ class _MediaTile extends StatelessWidget {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            AppNetworkImage(
-              url: media.thumbnail ?? media.url,
-              fit: BoxFit.cover,
-              placeholder: Container(color: Colors.white10),
-              errorWidget: Container(
-                color: Colors.white10,
-                child: const Icon(
-                  Icons.broken_image_outlined,
-                  color: Colors.white,
+            const ColoredBox(color: Colors.black),
+            if (media.previewImageUrl != null)
+              AppNetworkImage(
+                url: media.previewImageUrl!,
+                fit: BoxFit.contain,
+                placeholder: Container(color: Colors.white10),
+                errorWidget: Container(
+                  color: Colors.white10,
+                  child: const Icon(
+                    Icons.broken_image_outlined,
+                    color: Colors.white,
+                  ),
                 ),
               ),
-            ),
             DecoratedBox(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
@@ -294,7 +292,11 @@ class _EmptyState extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.movie_filter_outlined, size: 64, color: Colors.white54),
+              const Icon(
+                Icons.movie_filter_outlined,
+                size: 64,
+                color: Colors.white54,
+              ),
               const SizedBox(height: 12),
               const Text(
                 'لا توجد منشورات لهذه الخدمة حالياً',
@@ -337,7 +339,11 @@ class _ErrorState extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.wifi_off_outlined, size: 64, color: Colors.white54),
+              const Icon(
+                Icons.wifi_off_outlined,
+                size: 64,
+                color: Colors.white54,
+              ),
               const SizedBox(height: 12),
               const Text(
                 'حصل خطأ أثناء تحميل المحتوى',

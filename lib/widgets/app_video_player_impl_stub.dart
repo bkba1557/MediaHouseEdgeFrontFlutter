@@ -1,15 +1,20 @@
 import 'package:chewie/chewie.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 
-class AppVideoPlayer extends StatefulWidget {
+import '../config/app_config.dart';
+import 'app_video_player.dart';
+
+class AppVideoPlayerImplFactory extends StatefulWidget
+    implements AppVideoPlayer {
   final Uri url;
   final bool autoPlay;
   final bool looping;
   final bool allowFullScreen;
   final bool allowPlaybackSpeedChanging;
 
-  const AppVideoPlayer({
+  const AppVideoPlayerImplFactory({
     super.key,
     required this.url,
     this.autoPlay = false,
@@ -19,13 +24,31 @@ class AppVideoPlayer extends StatefulWidget {
   });
 
   @override
-  State<AppVideoPlayer> createState() => _AppVideoPlayerState();
+  State<AppVideoPlayerImplFactory> createState() =>
+      _AppVideoPlayerImplFactoryState();
 }
 
-class _AppVideoPlayerState extends State<AppVideoPlayer> {
+class _AppVideoPlayerImplFactoryState
+    extends State<AppVideoPlayerImplFactory> {
   VideoPlayerController? _videoController;
   ChewieController? _chewieController;
   String? _error;
+
+  Uri _resolveVideoUri(Uri uri) {
+    if (!kIsWeb) return uri;
+
+    if (!uri.hasScheme) {
+      final backend = Uri.parse(AppConfig.apiBaseUrl);
+      final backendOrigin = backend.replace(path: '', query: '', fragment: '');
+      return backendOrigin.resolveUri(uri);
+    }
+
+    if (Uri.base.scheme == 'https' && uri.scheme == 'http') {
+      return uri.replace(scheme: 'https');
+    }
+
+    return uri;
+  }
 
   @override
   void initState() {
@@ -35,7 +58,9 @@ class _AppVideoPlayerState extends State<AppVideoPlayer> {
 
   Future<void> _init() async {
     try {
-      final controller = VideoPlayerController.networkUrl(widget.url);
+      final controller = VideoPlayerController.networkUrl(
+        _resolveVideoUri(widget.url),
+      );
       _videoController = controller;
       await controller.initialize();
       if (!mounted) return;
@@ -44,6 +69,7 @@ class _AppVideoPlayerState extends State<AppVideoPlayer> {
         videoPlayerController: controller,
         autoPlay: widget.autoPlay,
         looping: widget.looping,
+        aspectRatio: _safeAspectRatio(controller.value.aspectRatio),
         allowFullScreen: widget.allowFullScreen,
         allowPlaybackSpeedChanging: widget.allowPlaybackSpeedChanging,
         showControlsOnInitialize: true,
@@ -72,6 +98,13 @@ class _AppVideoPlayerState extends State<AppVideoPlayer> {
     }
   }
 
+  double _safeAspectRatio(double aspectRatio) {
+    if (aspectRatio.isNaN || aspectRatio.isInfinite || aspectRatio <= 0) {
+      return 16 / 9;
+    }
+    return aspectRatio;
+  }
+
   @override
   void dispose() {
     _chewieController?.dispose();
@@ -98,6 +131,13 @@ class _AppVideoPlayerState extends State<AppVideoPlayer> {
       );
     }
 
-    return Chewie(controller: chewie);
+    return ClipRect(
+      child: Directionality(
+        textDirection: TextDirection.ltr,
+        child: SizedBox.expand(
+          child: Chewie(controller: chewie),
+        ),
+      ),
+    );
   }
 }

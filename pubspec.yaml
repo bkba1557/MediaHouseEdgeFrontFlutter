@@ -38,3 +38,17 @@ flutter:
     - family: Cairo
       fonts:
         - asset: assets/fonts/Cairo.ttf
+    - family: Petrichor
+      fonts:
+        - asset: assets/fonts/ZYAEA-Petrichor.ttf
+          weight: 400
+        - asset: assets/fonts/ZYAEA-Petrichor.ttf
+          weight: 500
+        - asset: assets/fonts/ZYAEA-Petrichor.ttf
+          weight: 600
+        - asset: assets/fonts/ZYAEA-Petrichor.ttf
+          weight: 700
+        - asset: assets/fonts/ZYAEA-Petrichor.ttf
+          weight: 800
+        - asset: assets/fonts/ZYAEA-Petrichor.ttf
+          weight: 900

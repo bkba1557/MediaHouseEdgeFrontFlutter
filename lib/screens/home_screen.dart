@@ -75,7 +75,11 @@ class _HomeScreenState extends State<HomeScreen>
       ' بيع وتوزيع وتسويق الاعمال بالمنصات',
       Icons.money_outlined,
     ),
-    _ServiceItem('مونتاج', 'VFX , Color Correction , Visual Effects', Icons.tune_outlined),
+    _ServiceItem(
+      'مونتاج',
+      'VFX , Color Correction , Visual Effects',
+      Icons.tune_outlined,
+    ),
     _ServiceItem(
       'إعلانات تجارية',
       'تلفزيونية وسوشيال ميديا وغيرها',
@@ -143,7 +147,10 @@ class _HomeScreenState extends State<HomeScreen>
       vsync: this,
       duration: const Duration(seconds: 20),
     )..repeat();
-    _loadMedia();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _loadMedia();
+    });
     _startAdTimer();
   }
 
@@ -164,12 +171,12 @@ class _HomeScreenState extends State<HomeScreen>
     _didPrefillContactForm = true;
   }
 
-  void _loadMedia() {
+  Future<void> _loadMedia() async {
     final mediaProvider = Provider.of<MediaProvider>(context, listen: false);
     if (_selectedCategory == 'all') {
-      mediaProvider.fetchMedia();
+      await mediaProvider.fetchMedia();
     } else {
-      mediaProvider.fetchMedia(category: _selectedCategory);
+      await mediaProvider.fetchMedia(category: _selectedCategory);
     }
   }
 
@@ -267,7 +274,7 @@ class _HomeScreenState extends State<HomeScreen>
                                 style: TextStyle(
                                   color: _primaryText,
                                   fontSize: 20,
-                                  fontWeight: FontWeight.w900,
+                                  fontWeight: FontWeight.w700,
                                 ),
                               ),
                               Text(
@@ -351,7 +358,7 @@ class _HomeScreenState extends State<HomeScreen>
                         style: TextStyle(
                           color: _primaryText,
                           fontSize: 20,
-                          fontWeight: FontWeight.w900,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
                       const SizedBox(height: 14),
@@ -457,7 +464,7 @@ class _HomeScreenState extends State<HomeScreen>
                                 style: TextStyle(
                                   color: _primaryText,
                                   fontSize: 18,
-                                  fontWeight: FontWeight.w900,
+                                  fontWeight: FontWeight.w700,
                                 ),
                               ),
                             ),
@@ -691,7 +698,6 @@ class _HomeScreenState extends State<HomeScreen>
         data: Theme.of(context).copyWith(
           brightness: _useLightTheme ? Brightness.light : Brightness.dark,
           scaffoldBackgroundColor: _pageBackground,
-          textTheme: Theme.of(context).textTheme.apply(fontFamily: 'Cairo'),
         ),
         child: Scaffold(
           extendBodyBehindAppBar: true,
@@ -783,7 +789,7 @@ class _HomeScreenState extends State<HomeScreen>
             'assets/images/logo.png',
             width: 28,
             height: 28,
-            fit: BoxFit.contain,
+            fit: BoxFit.cover,
           ),
           const SizedBox(width: 8),
           Text(
@@ -791,7 +797,7 @@ class _HomeScreenState extends State<HomeScreen>
             style: TextStyle(
               color: _primaryText,
               fontSize: 16,
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ],
@@ -1015,7 +1021,7 @@ class _HomeScreenState extends State<HomeScreen>
           style: TextStyle(
             color: _primaryText,
             fontSize: 30,
-            fontWeight: FontWeight.w900,
+            fontWeight: FontWeight.w700,
           ),
         ),
         const SizedBox(height: 8),
@@ -1079,7 +1085,7 @@ class _HomeScreenState extends State<HomeScreen>
               style: TextStyle(
                 color: _primaryText,
                 fontSize: 15,
-                fontWeight: FontWeight.w800,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ],
@@ -1101,9 +1107,7 @@ class _HomeScreenState extends State<HomeScreen>
                 final media = stories[index];
                 return _DailyStoryCircle(
                   label: media.title,
-                  imageUrl: media.isVideo
-                      ? media.thumbnail
-                      : (media.thumbnail ?? media.url),
+                  imageUrl: media.previewImageUrl,
                   icon: media.isVideo ? Icons.play_arrow : Icons.image_outlined,
                   borderColor: const Color(0xFFE50914),
                   textColor: _primaryText,
@@ -1185,26 +1189,44 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
+  /// يبني شريط الإعلانات (carousel) ويضمن أن الصورة تملأ مساحة البطاقة
+  /// بالكامل دون أن تُدفَس إلى الطرف الأيمن عند استعمال اللغة العربية (RTL).
   Widget _buildAdCarousel(List<Media> adMedia) {
-    final itemCount = adMedia.isEmpty ? 3 : adMedia.length;
+    // إذا لم يكن هناك إعلانات نعرض 3 بطاقات بديلة (fallback)
+    final int itemCount = adMedia.isEmpty ? 3 : adMedia.length;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const _SectionTitle('إعلانات', 'اسحب يمين وشمال'),
         const SizedBox(height: 12),
+
+        // --------‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑-
+        // 1️⃣  الصفحة (PageView) التي تستضيف البطاقات
+        //    * لا نضيف أي padding داخل الـ PageView لأن الـ viewportFraction
+        //      يحدد حجم الصفحة (86 % من عرض الشاشة) تلقائيًا.
+        //    * إذا أردت فاصلًا بسيطًا بين البطاقات في الاتجاه الأفقي
+        //      يمكن إضافة margin داخل `_AdBanner` نفسه.
+        // --------‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑-
         SizedBox(
           height: 230,
-          child: PageView.builder(
-            controller: _adPageController,
-            itemCount: itemCount,
-            itemBuilder: (context, index) {
-              final media = adMedia.isEmpty ? null : adMedia[index];
-              return Padding(
-                padding: const EdgeInsetsDirectional.only(end: 12),
-                child: _AdBanner(media: media, index: index),
-              );
-            },
-          ),
+          child: adMedia.length == 1
+              ? _AdBanner(media: adMedia.first, index: 0)
+              : Directionality(
+                  textDirection: TextDirection.ltr,
+                  child: PageView.builder(
+                    controller: _adPageController,
+                    // لا نستخدم EdgeInsetsDirectional هنا لتفادي الإزاحة في RTL
+                    itemCount: itemCount,
+                    itemBuilder: (context, index) {
+                      final Media? media = adMedia.isEmpty
+                          ? null
+                          : adMedia[index];
+                      // `_AdBanner` سيتلقى حجم الصفحة من الـ PageView ويملأه بالكامل
+                      return _AdBanner(media: media, index: index);
+                    },
+                  ),
+                ),
         ),
       ],
     );
@@ -1273,7 +1295,7 @@ class _HomeScreenState extends State<HomeScreen>
                                 overflow: TextOverflow.ellipsis,
                                 style: const TextStyle(
                                   color: Colors.white,
-                                  fontWeight: FontWeight.w800,
+                                  fontWeight: FontWeight.w600,
                                   fontSize: 15,
                                 ),
                               ),
@@ -1318,7 +1340,7 @@ class _HomeScreenState extends State<HomeScreen>
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 18,
-                  fontWeight: FontWeight.w800,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
               const SizedBox(height: 8),
@@ -1328,7 +1350,7 @@ class _HomeScreenState extends State<HomeScreen>
               ),
               const SizedBox(height: 14),
               SizedBox(
-                height: 160,
+                height: MediaQuery.sizeOf(context).width < 600 ? 160 : 170,
                 child: isLoading
                     ? const Center(
                         child: CircularProgressIndicator(
@@ -1340,13 +1362,17 @@ class _HomeScreenState extends State<HomeScreen>
                         icon: Icons.play_circle_outline,
                         text: 'أضف فيديوهات من لوحة الإدارة لتظهر هنا',
                       )
-                    : ListView.separated(
-                        scrollDirection: Axis.horizontal,
-                        itemCount: videos.length,
-                        separatorBuilder: (_, __) => const SizedBox(width: 12),
-                        itemBuilder: (context, index) {
-                          return _MediaPreview(media: videos[index]);
-                        },
+                    : Directionality(
+                        textDirection: TextDirection.ltr,
+                        child: ListView.separated(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: videos.length,
+                          separatorBuilder: (_, __) =>
+                              const SizedBox(width: 12),
+                          itemBuilder: (context, index) {
+                            return _MediaPreview(media: videos[index]);
+                          },
+                        ),
                       ),
               ),
             ],
@@ -1364,7 +1390,7 @@ class _HomeScreenState extends State<HomeScreen>
         const _SectionTitle('أعمال حديثة', 'صور وفيديوهات'),
         const SizedBox(height: 12),
         SizedBox(
-          height: 180,
+          height: MediaQuery.sizeOf(context).width < 600 ? 180 : 190,
           child: isLoading
               ? const Center(
                   child: CircularProgressIndicator(color: Color(0xFFE50914)),
@@ -1374,13 +1400,16 @@ class _HomeScreenState extends State<HomeScreen>
                   icon: Icons.photo_library_outlined,
                   text: 'لا توجد أعمال متاحة الآن',
                 )
-              : ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: selectedMedia.length,
-                  separatorBuilder: (_, __) => const SizedBox(width: 12),
-                  itemBuilder: (context, index) {
-                    return _MediaPreview(media: selectedMedia[index]);
-                  },
+              : Directionality(
+                  textDirection: TextDirection.ltr,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: selectedMedia.length,
+                    separatorBuilder: (_, __) => const SizedBox(width: 12),
+                    itemBuilder: (context, index) {
+                      return _MediaPreview(media: selectedMedia[index]);
+                    },
+                  ),
                 ),
         ),
       ],
@@ -1420,7 +1449,7 @@ class _HomeScreenState extends State<HomeScreen>
                     color: isLight
                         ? Colors.black.withValues(alpha: 0.72)
                         : Colors.white.withValues(alpha: 0.72),
-                    fontWeight: FontWeight.w800,
+                    fontWeight: FontWeight.w600,
                     fontSize: 12,
                   ),
                 ),
@@ -1792,7 +1821,7 @@ class _SupportOptionTile extends StatelessWidget {
                     title,
                     style: TextStyle(
                       color: titleColor,
-                      fontWeight: FontWeight.w800,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -1915,11 +1944,13 @@ class _DailyStoryCircle extends StatelessWidget {
                     : Stack(
                         fit: StackFit.expand,
                         children: [
-                          AppNetworkImage(
-                            url: imageUrl!,
-                            fit: BoxFit.cover,
-                            placeholder: fallback(),
-                            errorWidget: fallback(),
+                          Positioned.fill(
+                            child: AppNetworkImage(
+                              url: imageUrl!,
+                              fit: BoxFit.cover,
+                              placeholder: fallback(),
+                              errorWidget: fallback(),
+                            ),
                           ),
                           Align(
                             alignment: Alignment.bottomRight,
@@ -1982,7 +2013,7 @@ class _MetricTile extends StatelessWidget {
               style: TextStyle(
                 color: isLight ? Colors.black : Colors.white,
                 fontSize: 18,
-                fontWeight: FontWeight.w900,
+                fontWeight: FontWeight.w700,
               ),
             ),
             const SizedBox(height: 4),
@@ -2023,7 +2054,7 @@ class _SectionTitle extends StatelessWidget {
                 style: TextStyle(
                   color: titleColor,
                   fontSize: 20,
-                  fontWeight: FontWeight.w900,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
               Text(
@@ -2042,78 +2073,91 @@ class _AdBanner extends StatelessWidget {
   final Media? media;
   final int index;
 
-  const _AdBanner({required this.media, required this.index});
+  const _AdBanner({required this.media, required this.index, super.key});
 
   @override
   Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(8),
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          if (media?.thumbnail != null || media?.url != null)
-            AppNetworkImage(
-              url: media?.thumbnail ?? media!.url,
-              fit: BoxFit.cover,
-              placeholder: _fallbackBackground(),
-              errorWidget: _fallbackBackground(),
-            )
-          else
-            _fallbackBackground(),
-          DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Colors.transparent,
-                  Colors.black.withValues(alpha: 0.84),
-                ],
-              ),
-            ),
-          ),
-          Positioned(
-            left: 18,
-            right: 18,
-            bottom: 18,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  media?.title ??
-                      _fallbackTitles[index % _fallbackTitles.length],
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 24,
-                    fontWeight: FontWeight.w900,
+    return Directionality(
+      textDirection: TextDirection.ltr,
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 6),
+        width: double.infinity,
+        height: double.infinity,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              _fallbackBackground(),
+
+              if (media?.previewImageUrl != null)
+                Positioned.fill(
+                  child: AppNetworkImage(
+                    url: media!.previewImageUrl!,
+                    fit: BoxFit.contain,
+                    width: double.infinity,
+                    height: double.infinity,
+                    placeholder: _fallbackBackground(),
+                    errorWidget: _fallbackBackground(),
                   ),
                 ),
-                const SizedBox(height: 6),
-                Text(
-                  media?.description ??
-                      'إعلان متحرك بخط أحمر وأسود وواجهة زجاجية.',
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: Colors.white70, fontSize: 13),
+
+              const DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [Colors.transparent, Color.fromRGBO(0, 0, 0, 0.84)],
+                  ),
                 ),
-              ],
-            ),
+              ),
+
+              Positioned(
+                left: 18,
+                right: 18,
+                bottom: 18,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      media?.title ??
+                          _fallbackTitles[index % _fallbackTitles.length],
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 24,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      media?.description ??
+                          'إعلان متحرك بخط أحمر وأسود وواجهة زجاجية.',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
 
   Widget _fallbackBackground() {
-    return DecoratedBox(
+    return const DecoratedBox(
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [
-            const Color(0xFFE50914).withValues(alpha: 0.86),
-            Colors.black,
-          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFFE50914), Colors.black],
         ),
       ),
     );
@@ -2153,6 +2197,13 @@ class _MediaPreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final cardWidth = screenWidth < 600
+        ? ((screenWidth - 44) / 2).clamp(136.0, 190.0)
+        : screenWidth < 900
+        ? 210.0
+        : 230.0;
+
     return InkWell(
       borderRadius: BorderRadius.circular(8),
       onTap: () {
@@ -2171,24 +2222,28 @@ class _MediaPreview extends StatelessWidget {
         );
       },
       child: SizedBox(
-        width: 230,
+        width: cardWidth,
         child: ClipRRect(
           borderRadius: BorderRadius.circular(8),
           child: Stack(
             fit: StackFit.expand,
             children: [
-              AppNetworkImage(
-                url: media.thumbnail ?? media.url,
-                fit: BoxFit.cover,
-                placeholder: Container(color: Colors.white10),
-                errorWidget: Container(
-                  color: Colors.white10,
-                  child: const Icon(
-                    Icons.broken_image_outlined,
-                    color: Colors.white,
+              const ColoredBox(color: Colors.black),
+              if (media.previewImageUrl != null)
+                Positioned.fill(
+                  child: AppNetworkImage(
+                    url: media.previewImageUrl!,
+                    fit: BoxFit.cover,
+                    placeholder: Container(color: Colors.white10),
+                    errorWidget: Container(
+                      color: Colors.white10,
+                      child: const Icon(
+                        Icons.broken_image_outlined,
+                        color: Colors.white,
+                      ),
+                    ),
                   ),
                 ),
-              ),
               DecoratedBox(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
@@ -2219,7 +2274,7 @@ class _MediaPreview extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     color: Colors.white,
-                    fontWeight: FontWeight.w800,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ),

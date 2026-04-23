@@ -32,18 +32,20 @@ class Media {
   });
 
   factory Media.fromJson(Map<String, dynamic> json) {
+    final rawType = (json['type'] ?? '').toString();
+    final normalizedType = rawType.trim().toLowerCase();
     final rawCrew = json['crew'];
     final crew = rawCrew is List
         ? rawCrew
-            .whereType<Map<String, dynamic>>()
-            .map(MediaCrewMember.fromJson)
-            .toList(growable: false)
+              .whereType<Map<String, dynamic>>()
+              .map(MediaCrewMember.fromJson)
+              .toList(growable: false)
         : const <MediaCrewMember>[];
     return Media(
       id: json['_id'],
       title: json['title'],
       description: json['description'] ?? '',
-      type: json['type'],
+      type: normalizedType.isEmpty ? rawType : normalizedType,
       url: json['url'],
       thumbnail: json['thumbnail'],
       crew: crew,
@@ -59,8 +61,25 @@ class Media {
     );
   }
 
-  bool get isVideo => type == 'video';
-  bool get isImage => type == 'image';
+  bool get isVideo => type.trim().toLowerCase() == 'video';
+  bool get isImage => type.trim().toLowerCase() == 'image';
+
+  /// URL for showing a preview image in grids/cards.
+  ///
+  /// - Images: uses [url].
+  /// - Videos: uses [thumbnail] when available.
+  ///
+  /// Returns null when there is no safe preview image (e.g. video without a
+  /// cover/thumbnail).
+  String? get previewImageUrl {
+    // Treat any unknown type as image for preview purposes (so old/legacy data
+    // like "IMAGE" keeps working on the web).
+    if (!isVideo) return url;
+
+    final thumb = (thumbnail ?? '').trim();
+    if (thumb.isNotEmpty) return thumb;
+    return null;
+  }
 }
 
 class MediaCrewMember {
@@ -83,8 +102,8 @@ class MediaCrewMember {
   }
 
   Map<String, dynamic> toJson() => {
-        'name': name,
-        'role': role,
-        'photoUrl': photoUrl,
-      };
+    'name': name,
+    'role': role,
+    'photoUrl': photoUrl,
+  };
 }

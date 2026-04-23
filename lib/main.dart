@@ -38,7 +38,14 @@ class MyApp extends StatelessWidget {
             seedColor: const Color(0xFFE50914),
             brightness: Brightness.dark,
           ),
-          fontFamily: 'Cairo',
+          fontFamily: 'Petrichor',
+          fontFamilyFallback: const [
+            'Cairo',
+            'Tajawal',
+            'Arial',
+            'Roboto',
+            'sans-serif',
+          ],
           scaffoldBackgroundColor: Colors.black,
           visualDensity: VisualDensity.adaptivePlatformDensity,
           appBarTheme: const AppBarTheme(

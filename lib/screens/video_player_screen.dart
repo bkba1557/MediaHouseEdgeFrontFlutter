@@ -19,13 +19,20 @@ class VideoPlayerScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final coverUrl = media.thumbnail;
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final compact = screenWidth < 600;
+    final heroHeight = compact ? (screenWidth * 1.05).clamp(360.0, 460.0) : 420.0;
+    final playerPadding = compact
+        ? const EdgeInsets.fromLTRB(12, 72, 12, 18)
+        : const EdgeInsets.fromLTRB(16, 56, 16, 16);
+
     return Scaffold(
       appBar: AppBar(title: Text(media.title)),
       body: ListView(
         padding: EdgeInsets.zero,
         children: [
           SizedBox(
-            height: 420,
+            height: heroHeight,
             child: Stack(
               fit: StackFit.expand,
               children: [
@@ -50,24 +57,23 @@ class VideoPlayerScreen extends StatelessWidget {
                     ),
                   ),
                 ),
-                Align(
-                  alignment: Alignment.bottomCenter,
+                Positioned.fill(
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                    padding: playerPadding,
                     child: Center(
                       child: ConstrainedBox(
                         constraints: const BoxConstraints(maxWidth: 980),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(16),
-                          child: DecoratedBox(
-                            decoration: BoxDecoration(
-                              color: Colors.black,
-                              border: Border.all(
-                                color: Colors.white.withValues(alpha: 0.12),
+                        child: AspectRatio(
+                          aspectRatio: 16 / 9,
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(16),
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(
+                                color: Colors.black,
+                                border: Border.all(
+                                  color: Colors.white.withValues(alpha: 0.12),
+                                ),
                               ),
-                            ),
-                            child: AspectRatio(
-                              aspectRatio: 16 / 9,
                               child: AppVideoPlayer(
                                 url: Uri.parse(media.url),
                                 autoPlay: false,

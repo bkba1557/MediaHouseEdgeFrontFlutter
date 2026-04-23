@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import '../models/media.dart';
 import '../screens/image_viewer_screen.dart';
 import '../screens/media_detail_screen.dart';
@@ -18,8 +18,8 @@ class MediaGrid extends StatelessWidget {
         crossAxisCount: Responsive.isDesktop(context)
             ? 4
             : Responsive.isTablet(context)
-                ? 3
-                : 2,
+            ? 3
+            : 2,
         childAspectRatio: Responsive.isDesktop(context) ? 0.7 : 0.8,
         crossAxisSpacing: Responsive.scale(context, 8),
         mainAxisSpacing: Responsive.scale(context, 8),
@@ -28,7 +28,9 @@ class MediaGrid extends StatelessWidget {
       itemBuilder: (context, index) {
         final media = mediaList[index];
         final imageItems = mediaList.where((item) => item.isImage).toList();
-        final initialImageIndex = imageItems.indexWhere((item) => item.id == media.id);
+        final initialImageIndex = imageItems.indexWhere(
+          (item) => item.id == media.id,
+        );
         return GestureDetector(
           onTap: () {
             if (media.isImage && initialImageIndex != -1) {
@@ -55,7 +57,9 @@ class MediaGrid extends StatelessWidget {
           child: Card(
             elevation: 4,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(Responsive.scale(context, 12)),
+              borderRadius: BorderRadius.circular(
+                Responsive.scale(context, 12),
+              ),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -79,20 +83,22 @@ class MediaGrid extends StatelessWidget {
                                 ),
                               ),
                               Positioned.fill(
-                                child: AppNetworkImage(
-                                  url: media.thumbnail ?? media.url,
-                                  fit: BoxFit.cover,
-                                  placeholder: const Center(
-                                    child: CircularProgressIndicator(),
-                                  ),
-                                  errorWidget: const Icon(Icons.error),
-                                ),
+                                child: media.previewImageUrl == null
+                                    ? const SizedBox.shrink()
+                                    : AppNetworkImage(
+                                        url: media.previewImageUrl!,
+                                        fit: BoxFit.contain,
+                                        placeholder: const Center(
+                                          child: CircularProgressIndicator(),
+                                        ),
+                                        errorWidget: const Icon(Icons.error),
+                                      ),
                               ),
                             ],
                           )
                         : AppNetworkImage(
                             url: media.url,
-                            fit: BoxFit.cover,
+                            fit: BoxFit.contain,
                             width: double.infinity,
                             placeholder: const Center(
                               child: CircularProgressIndicator(),
