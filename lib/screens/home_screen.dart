@@ -2094,7 +2094,7 @@ class _AdBanner extends StatelessWidget {
                 Positioned.fill(
                   child: AppNetworkImage(
                     url: media!.previewImageUrl!,
-                    fit: BoxFit.contain,
+                    fit: BoxFit.cover,
                     width: double.infinity,
                     height: double.infinity,
                     placeholder: _fallbackBackground(),
