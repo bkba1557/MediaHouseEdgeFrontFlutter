@@ -2,18 +2,22 @@ import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../models/media.dart';
 import '../models/team_member.dart';
+import '../localization/app_localizations.dart';
 import '../providers/auth_provider.dart';
 import '../providers/about_provider.dart';
+import '../providers/locale_provider.dart';
 import '../providers/media_provider.dart';
 import '../providers/response_provider.dart';
 import '../providers/team_provider.dart';
 import '../config/company_info.dart';
 import '../widgets/app_network_image.dart';
+import '../widgets/auto_play_video_preview.dart';
 import '../widgets/team_member_engagement_widgets.dart';
 import 'admin/admin_dashboard.dart';
 import 'about_screen.dart';
@@ -22,6 +26,7 @@ import 'service_feed_screen.dart';
 import 'series_folders_screen.dart';
 import 'story_view_screen.dart';
 import 'team_member_profile_screen.dart';
+import 'user_profile_screen.dart';
 import 'video_player_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -53,7 +58,6 @@ class _HomeScreenState extends State<HomeScreen>
   String _selectedCategory = 'all';
   bool _isSending = false;
   int _adItemCount = 3;
-  bool _isArabic = true;
   _HomeThemeMode _themeMode = _HomeThemeMode.dark;
   bool _didPrefillContactForm = false;
   final List<_SupportChatMessage> _supportChatMessages = [
@@ -116,6 +120,26 @@ class _HomeScreenState extends State<HomeScreen>
       ' إنتاج إعلانات بالتعاون مع جهات حكومية',
       Icons.handshake_outlined,
     ),
+    _ServiceItem(
+      'تعاقدات فنانين',
+      'إدارة وحجز وتنسيق التعاقدات الفنية',
+      Icons.assignment_ind_outlined,
+    ),
+    _ServiceItem(
+      'كواليس التصوير',
+      'توثيق خلف الكاميرا ولحظات ما وراء المشهد',
+      Icons.photo_camera_back_outlined,
+    ),
+    _ServiceItem(
+      'DJ\'s Booking',
+      'حجز وإدارة عروض الدي جي والفعاليات الموسيقية',
+      Icons.queue_music_outlined,
+    ),
+    _ServiceItem(
+      'أعمال مع مؤسسات دولية',
+      'تنفيذ وإنتاج مشاريع مشتركة مع جهات ومؤسسات دولية',
+      Icons.apartment_outlined,
+    ),
   ];
 
   final List<String> _serviceKeys = const [
@@ -131,10 +155,16 @@ class _HomeScreenState extends State<HomeScreen>
     'media_coverage',
     'audio_recordings',
     'gov_partnership_ads',
+    'artist_contracts',
+    'behind_the_scenes',
+    'dj_booking',
+    'international_institutions',
   ];
 
   TextDirection get _textDirection =>
-      _isArabic ? TextDirection.rtl : TextDirection.ltr;
+      AppLocalizations.isRtlLocale(Localizations.localeOf(context))
+      ? TextDirection.rtl
+      : TextDirection.ltr;
 
   bool get _useLightTheme {
     if (_themeMode == _HomeThemeMode.light) return true;
@@ -149,7 +179,7 @@ class _HomeScreenState extends State<HomeScreen>
       ? Colors.black.withValues(alpha: 0.10)
       : Colors.white.withValues(alpha: 0.12);
 
-  String _copy(String ar, String en) => _isArabic ? ar : en;
+  String _copy(String ar, String en) => context.tr(ar, fallback: en);
 
   @override
   void initState() {
@@ -238,14 +268,18 @@ class _HomeScreenState extends State<HomeScreen>
       _emailController.clear();
       _messageController.clear();
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('تم إرسال رسالتك بنجاح')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.tr('تم إرسال رسالتك بنجاح'))),
+      );
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('تعذر الإرسال: $error')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            context.tr('تعذر الإرسال: {error}', params: {'error': '$error'}),
+          ),
+        ),
+      );
     } finally {
       if (mounted) setState(() => _isSending = false);
     }
@@ -625,6 +659,112 @@ class _HomeScreenState extends State<HomeScreen>
     });
   }
 
+  Future<void> _openLanguageSheet() async {
+    final localeProvider = context.read<LocaleProvider>();
+    final currentCode = localeProvider.locale.languageCode;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
+        return _GlassPanel(
+          margin: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(16),
+          child: SafeArea(
+            top: false,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  sheetContext.tr('لغة التطبيق'),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  sheetContext.tr('اختر لغة الواجهة'),
+                  style: const TextStyle(color: Colors.white70),
+                ),
+                const SizedBox(height: 14),
+                ...AppLocalizations.languageOptions.map((option) {
+                  final selected = option.locale.languageCode == currentCode;
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(12),
+                      onTap: () async {
+                        await localeProvider.setLocale(option.locale);
+                        if (sheetContext.mounted) {
+                          Navigator.pop(sheetContext);
+                        }
+                      },
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 180),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 12,
+                        ),
+                        decoration: BoxDecoration(
+                          color: selected
+                              ? const Color(0xFFE50914).withValues(alpha: 0.18)
+                              : Colors.white.withValues(alpha: 0.04),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: selected
+                                ? const Color(0xFFE50914)
+                                : Colors.white.withValues(alpha: 0.08),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              selected
+                                  ? Icons.check_circle_rounded
+                                  : Icons.language_rounded,
+                              color: selected
+                                  ? const Color(0xFFE50914)
+                                  : Colors.white70,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    option.nativeName,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  Text(
+                                    option.englishName,
+                                    style: const TextStyle(
+                                      color: Colors.white60,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                }),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   void _openAccountSheet(AuthProvider authProvider) {
     showModalBottomSheet(
       context: context,
@@ -647,7 +787,7 @@ class _HomeScreenState extends State<HomeScreen>
                   title: Text(
                     user?.username.isNotEmpty == true
                         ? user!.username
-                        : 'الحساب',
+                        : sheetContext.tr('الحساب'),
                     style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.w700,
@@ -659,6 +799,26 @@ class _HomeScreenState extends State<HomeScreen>
                   ),
                 ),
                 const SizedBox(height: 12),
+                if (user != null && !user.isGuest) ...[
+                  SizedBox(
+                    width: double.infinity,
+                    height: 46,
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        Navigator.pop(sheetContext);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const UserProfileScreen(),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.assignment_ind_outlined),
+                      label: const Text('طلباتي وعقودي'),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                ],
                 SizedBox(
                   width: double.infinity,
                   height: 46,
@@ -668,7 +828,7 @@ class _HomeScreenState extends State<HomeScreen>
                       if (sheetContext.mounted) Navigator.pop(sheetContext);
                     },
                     icon: const Icon(Icons.logout),
-                    label: const Text('تسجيل الخروج'),
+                    label: Text(sheetContext.tr('تسجيل الخروج')),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFFE50914),
                       foregroundColor: Colors.white,
@@ -788,8 +948,17 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   PreferredSizeWidget _buildAppBar(AuthProvider authProvider) {
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final isWideWeb = kIsWeb && screenWidth >= 720;
+    final localeCode = context.watch<LocaleProvider>().locale.languageCode;
+    final toolbarHeight = isWideWeb ? 78.0 : 66.0;
+    final logoBadgeSize = isWideWeb ? 62.0 : 52.0;
+    final logoPadding = isWideWeb ? 2.0 : 3.0;
+    final titleFontSize = isWideWeb ? 20.0 : 17.0;
+    final titleGap = isWideWeb ? 14.0 : 12.0;
+
     return AppBar(
-      toolbarHeight: 50,
+      toolbarHeight: toolbarHeight,
       backgroundColor: Colors.transparent,
       elevation: 0,
       centerTitle: false,
@@ -810,26 +979,49 @@ class _HomeScreenState extends State<HomeScreen>
       title: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Image.asset(
-            'assets/images/logo.png',
-            width: 28,
-            height: 28,
-            fit: BoxFit.cover,
+          Container(
+            width: logoBadgeSize,
+            height: logoBadgeSize,
+            padding: EdgeInsets.all(logoPadding),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.78),
+                width: isWideWeb ? 1.6 : 1.4,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Color(0x33000000),
+                  blurRadius: isWideWeb ? 22 : 18,
+                  offset: Offset(0, isWideWeb ? 9 : 7),
+                ),
+                BoxShadow(
+                  color: Color(0x26FFFFFF),
+                  blurRadius: isWideWeb ? 26 : 22,
+                  spreadRadius: isWideWeb ? 2.0 : 1.5,
+                ),
+              ],
+            ),
+            child: ClipOval(
+              child: Image.asset('assets/images/logo.png', fit: BoxFit.cover),
+            ),
           ),
-          const SizedBox(width: 8),
+          SizedBox(width: titleGap),
           Text(
-            'Media House Edge',
+            context.tr('Media House Edge'),
             style: TextStyle(
               color: _primaryText,
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
+              fontSize: titleFontSize,
+              fontWeight: FontWeight.w700,
             ),
           ),
         ],
       ),
       actions: [
         _AppIconButton(
-          icon: Icons.info_outline,
+          icon: Icons.info_outline_rounded,
+          tooltip: context.tr('عن التطبيق'),
           onPressed: () {
             Navigator.push(
               context,
@@ -838,20 +1030,25 @@ class _HomeScreenState extends State<HomeScreen>
           },
         ),
         _AppIconButton(
-          icon: Icons.translate,
-          onPressed: () => setState(() => _isArabic = !_isArabic),
+          icon: Icons.language_rounded,
+          tooltip: context.tr('لغة التطبيق'),
+          isActive: localeCode != 'ar',
+          onPressed: _openLanguageSheet,
         ),
         _AppIconButton(
           icon: _themeMode == _HomeThemeMode.light
-              ? Icons.light_mode_outlined
+              ? Icons.light_mode_rounded
               : _themeMode == _HomeThemeMode.dark
-              ? Icons.dark_mode_outlined
-              : Icons.brightness_auto_outlined,
+              ? Icons.dark_mode_rounded
+              : Icons.brightness_auto_rounded,
+          tooltip: context.tr('المظهر'),
+          isActive: _themeMode != _HomeThemeMode.dark,
           onPressed: _cycleThemeMode,
         ),
         if (authProvider.isAdmin)
           _AppIconButton(
-            icon: Icons.dashboard_outlined,
+            icon: Icons.dashboard_customize_outlined,
+            tooltip: context.tr('لوحة التحكم'),
             onPressed: () {
               Navigator.push(
                 context,
@@ -861,12 +1058,14 @@ class _HomeScreenState extends State<HomeScreen>
           ),
         if (!authProvider.isAuthenticated)
           _AppIconButton(
-            icon: Icons.login,
+            icon: Icons.login_rounded,
+            tooltip: context.tr('الدخول'),
             onPressed: () => Navigator.pushNamed(context, '/login'),
           )
         else
           _AppIconButton(
             icon: Icons.account_circle_outlined,
+            tooltip: context.tr('الحساب'),
             onPressed: () => _openAccountSheet(authProvider),
           ),
         const SizedBox(width: 8),
@@ -1076,7 +1275,7 @@ class _HomeScreenState extends State<HomeScreen>
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                title,
+                context.tr(title),
                 style: TextStyle(
                   color: _primaryText,
                   fontSize: 28,
@@ -1086,7 +1285,7 @@ class _HomeScreenState extends State<HomeScreen>
               ),
               const SizedBox(height: 8),
               Text(
-                subtitle,
+                context.tr(subtitle),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
@@ -1579,16 +1778,21 @@ class _HomeScreenState extends State<HomeScreen>
         else
           LayoutBuilder(
             builder: (context, constraints) {
+              const gridSpacing = 14.0;
               final columns = constraints.maxWidth > 980
                   ? 4
                   : constraints.maxWidth > 680
                   ? 2
                   : 1;
-              final ratio = columns == 1
-                  ? 2.8
+              final cardWidth =
+                  (constraints.maxWidth - (gridSpacing * (columns - 1))) /
+                  columns;
+              final targetHeight = columns == 1
+                  ? (cardWidth < 360 ? 384.0 : 360.0)
                   : columns == 2
-                  ? 1.34
-                  : 0.74;
+                  ? 360.0
+                  : 340.0;
+              final ratio = cardWidth / targetHeight;
 
               return GridView.builder(
                 shrinkWrap: true,
@@ -1596,8 +1800,8 @@ class _HomeScreenState extends State<HomeScreen>
                 itemCount: members.length,
                 gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: columns,
-                  mainAxisSpacing: 14,
-                  crossAxisSpacing: 14,
+                  mainAxisSpacing: gridSpacing,
+                  crossAxisSpacing: gridSpacing,
                   childAspectRatio: ratio,
                 ),
                 itemBuilder: (context, index) {
@@ -1897,6 +2101,19 @@ class _HomeScreenState extends State<HomeScreen>
       );
     }
 
+    bool hasReviewSafeValue(String value) {
+      final trimmed = value.trim();
+      if (trimmed.isEmpty) return false;
+
+      const obviousPlaceholders = {
+        '0000000000',
+        '+966 00 000 0000',
+        '+966000000000',
+      };
+
+      return !obviousPlaceholders.contains(trimmed);
+    }
+
     return _GlassPanel(
       padding: const EdgeInsets.all(18),
       child: Column(
@@ -1910,42 +2127,53 @@ class _HomeScreenState extends State<HomeScreen>
           LayoutBuilder(
             builder: (context, constraints) {
               final isWide = constraints.maxWidth > 880;
+              final companyAddress = _copy(
+                CompanyInfo.addressAr,
+                CompanyInfo.addressEn,
+              );
               final items = <Widget>[
-                item(
-                  Icons.badge_outlined,
-                  _copy('السجل التجاري', 'Commercial register'),
-                  CompanyInfo.commercialRegister,
-                ),
-                item(
-                  Icons.verified_outlined,
-                  _copy('الرقم الضريبي', 'Tax number'),
-                  CompanyInfo.taxNumber,
-                ),
-                item(
-                  Icons.location_on_outlined,
-                  _copy('العنوان', 'Address'),
-                  _copy(CompanyInfo.addressAr, CompanyInfo.addressEn),
-                ),
-                item(
-                  Icons.phone_outlined,
-                  _copy('الهاتف', 'Phone'),
-                  CompanyInfo.phone,
-                ),
-                item(
-                  Icons.email_outlined,
-                  _copy('البريد', 'Email'),
-                  CompanyInfo.email,
-                ),
-                item(
-                  Icons.public_outlined,
-                  _copy('الموقع', 'Website'),
-                  CompanyInfo.website,
-                ),
-                item(
-                  Icons.chat_outlined,
-                  _copy('واتساب', 'WhatsApp'),
-                  CompanyInfo.whatsapp,
-                ),
+                if (hasReviewSafeValue(CompanyInfo.commercialRegister))
+                  item(
+                    Icons.badge_outlined,
+                    _copy('السجل التجاري', 'Commercial register'),
+                    CompanyInfo.commercialRegister,
+                  ),
+                if (hasReviewSafeValue(CompanyInfo.taxNumber))
+                  item(
+                    Icons.verified_outlined,
+                    _copy('الرقم الضريبي', 'Tax number'),
+                    CompanyInfo.taxNumber,
+                  ),
+                if (hasReviewSafeValue(companyAddress))
+                  item(
+                    Icons.location_on_outlined,
+                    _copy('العنوان', 'Address'),
+                    companyAddress,
+                  ),
+                if (hasReviewSafeValue(CompanyInfo.phone))
+                  item(
+                    Icons.phone_outlined,
+                    _copy('الهاتف', 'Phone'),
+                    CompanyInfo.phone,
+                  ),
+                if (hasReviewSafeValue(CompanyInfo.email))
+                  item(
+                    Icons.email_outlined,
+                    _copy('البريد', 'Email'),
+                    CompanyInfo.email,
+                  ),
+                if (hasReviewSafeValue(CompanyInfo.website))
+                  item(
+                    Icons.public_outlined,
+                    _copy('الموقع', 'Website'),
+                    CompanyInfo.website,
+                  ),
+                if (hasReviewSafeValue(CompanyInfo.whatsapp))
+                  item(
+                    Icons.chat_outlined,
+                    _copy('واتساب', 'WhatsApp'),
+                    CompanyInfo.whatsapp,
+                  ),
               ];
 
               return Wrap(
@@ -2096,11 +2324,11 @@ class _HomeScreenState extends State<HomeScreen>
                     children: [
                       _GlassTextField(
                         controller: _nameController,
-                        label: 'الاسم',
+                        label: context.tr('الاسم'),
                         icon: Icons.person_outline,
                         validator: (value) {
                           if (value == null || value.trim().isEmpty) {
-                            return 'اكتب الاسم';
+                            return context.tr('اكتب الاسم');
                           }
                           return null;
                         },
@@ -2108,12 +2336,12 @@ class _HomeScreenState extends State<HomeScreen>
                       const SizedBox(height: 12),
                       _GlassTextField(
                         controller: _emailController,
-                        label: 'البريد الإلكتروني',
+                        label: context.tr('البريد الإلكتروني'),
                         icon: Icons.email_outlined,
                         keyboardType: TextInputType.emailAddress,
                         validator: (value) {
                           if (value == null || !value.contains('@')) {
-                            return 'اكتب بريد صحيح';
+                            return context.tr('اكتب بريد صحيح');
                           }
                           return null;
                         },
@@ -2127,11 +2355,11 @@ class _HomeScreenState extends State<HomeScreen>
                     Expanded(
                       child: _GlassTextField(
                         controller: _nameController,
-                        label: 'الاسم',
+                        label: context.tr('الاسم'),
                         icon: Icons.person_outline,
                         validator: (value) {
                           if (value == null || value.trim().isEmpty) {
-                            return 'اكتب الاسم';
+                            return context.tr('اكتب الاسم');
                           }
                           return null;
                         },
@@ -2141,12 +2369,12 @@ class _HomeScreenState extends State<HomeScreen>
                     Expanded(
                       child: _GlassTextField(
                         controller: _emailController,
-                        label: 'البريد الإلكتروني',
+                        label: context.tr('البريد الإلكتروني'),
                         icon: Icons.email_outlined,
                         keyboardType: TextInputType.emailAddress,
                         validator: (value) {
                           if (value == null || !value.contains('@')) {
-                            return 'اكتب بريد صحيح';
+                            return context.tr('اكتب بريد صحيح');
                           }
                           return null;
                         },
@@ -2159,12 +2387,12 @@ class _HomeScreenState extends State<HomeScreen>
             const SizedBox(height: 12),
             _GlassTextField(
               controller: _messageController,
-              label: 'رسالتك',
+              label: context.tr('رسالتك'),
               icon: Icons.chat_bubble_outline,
               maxLines: 4,
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
-                  return 'اكتب الرسالة';
+                  return context.tr('اكتب الرسالة');
                 }
                 return null;
               },
@@ -2185,7 +2413,9 @@ class _HomeScreenState extends State<HomeScreen>
                         ),
                       )
                     : const Icon(Icons.send_outlined),
-                label: Text(_isSending ? 'جاري الإرسال' : 'إرسال'),
+                label: Text(
+                  _isSending ? context.tr('جاري الإرسال') : context.tr('إرسال'),
+                ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFFE50914),
                   foregroundColor: Colors.white,
@@ -2286,19 +2516,63 @@ class _GlassPanel extends StatelessWidget {
 
 class _AppIconButton extends StatelessWidget {
   final IconData icon;
+  final String tooltip;
   final VoidCallback onPressed;
+  final bool isActive;
 
-  const _AppIconButton({required this.icon, required this.onPressed});
+  const _AppIconButton({
+    required this.icon,
+    required this.tooltip,
+    required this.onPressed,
+    this.isActive = false,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final foreground = Theme.of(context).brightness == Brightness.light
-        ? Colors.black
-        : Colors.white;
-    return IconButton(
-      onPressed: onPressed,
-      icon: Icon(icon, color: foreground, size: 22),
-      splashRadius: 22,
+    final isLight = Theme.of(context).brightness == Brightness.light;
+    final foreground = isLight ? Colors.black87 : Colors.white;
+
+    return Tooltip(
+      message: tooltip,
+      child: Padding(
+        padding: const EdgeInsetsDirectional.only(end: 8),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(14),
+            onTap: onPressed,
+            child: Ink(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(14),
+                color: isActive
+                    ? const Color(0xFFE50914).withValues(alpha: 0.18)
+                    : (isLight ? Colors.white : Colors.black).withValues(
+                        alpha: 0.18,
+                      ),
+                border: Border.all(
+                  color: isActive
+                      ? const Color(0xFFE50914)
+                      : Colors.white.withValues(alpha: isLight ? 0.14 : 0.10),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.14),
+                    blurRadius: 14,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: Icon(
+                icon,
+                color: isActive ? const Color(0xFFE50914) : foreground,
+                size: 20,
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -2856,7 +3130,7 @@ class _ServiceCardState extends State<_ServiceCard> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    widget.service.title,
+                                    context.tr(widget.service.title),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                     style: TextStyle(
@@ -2868,7 +3142,7 @@ class _ServiceCardState extends State<_ServiceCard> {
                                   ),
                                   const SizedBox(height: 7),
                                   Text(
-                                    widget.service.subtitle,
+                                    context.tr(widget.service.subtitle),
                                     maxLines: 2,
                                     overflow: TextOverflow.ellipsis,
                                     style: TextStyle(
@@ -2965,6 +3239,10 @@ class _TeamMemberSpotlightCard extends StatelessWidget {
     final isLight = Theme.of(context).brightness == Brightness.light;
     final titleColor = isLight ? Colors.black : Colors.white;
     final subtitleColor = isLight ? Colors.black54 : Colors.white70;
+    const compactButtonTextStyle = TextStyle(
+      fontSize: 12,
+      fontWeight: FontWeight.w700,
+    );
 
     return Material(
       color: Colors.transparent,
@@ -2997,7 +3275,7 @@ class _TeamMemberSpotlightCard extends StatelessWidget {
               ),
             ),
             child: Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.fromLTRB(10, 14, 10, 14),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -3007,8 +3285,8 @@ class _TeamMemberSpotlightCard extends StatelessWidget {
                       ClipRRect(
                         borderRadius: BorderRadius.circular(8),
                         child: SizedBox(
-                          width: 68,
-                          height: 68,
+                          width: 60,
+                          height: 60,
                           child: member.photoUrl.trim().isEmpty
                               ? Container(
                                   color: Colors.white10,
@@ -3029,7 +3307,7 @@ class _TeamMemberSpotlightCard extends StatelessWidget {
                                 ),
                         ),
                       ),
-                      const SizedBox(width: 12),
+                      const SizedBox(width: 10),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -3040,25 +3318,26 @@ class _TeamMemberSpotlightCard extends StatelessWidget {
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
                                 color: titleColor,
-                                fontSize: 16,
+                                fontSize: 15,
                                 fontWeight: FontWeight.w900,
                               ),
                             ),
-                            const SizedBox(height: 4),
+                            const SizedBox(height: 3),
                             Text(
                               member.role,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
                                 color: subtitleColor,
+                                fontSize: 12,
                                 fontWeight: FontWeight.w700,
                               ),
                             ),
-                            const SizedBox(height: 8),
+                            const SizedBox(height: 7),
                             Container(
                               padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 6,
+                                horizontal: 8,
+                                vertical: 5,
                               ),
                               decoration: BoxDecoration(
                                 color: const Color(
@@ -3070,24 +3349,24 @@ class _TeamMemberSpotlightCard extends StatelessWidget {
                                 '${member.portfolio.length} ${member.portfolio.length == 1 ? 'عمل' : 'أعمال'}',
                                 style: TextStyle(
                                   color: titleColor,
-                                  fontSize: 11,
+                                  fontSize: 10,
                                   fontWeight: FontWeight.w800,
                                 ),
                               ),
                             ),
-                            const SizedBox(height: 10),
-                            TeamMemberMetricChips(member: member, dense: true),
                           ],
                         ),
                       ),
                       Icon(
                         Icons.arrow_forward_ios,
                         color: subtitleColor,
-                        size: 16,
+                        size: 14,
                       ),
                     ],
                   ),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 12),
+                  TeamMemberMetricChips(member: member, dense: true),
+                  const SizedBox(height: 12),
                   Expanded(
                     child: SingleChildScrollView(
                       primary: false,
@@ -3097,25 +3376,28 @@ class _TeamMemberSpotlightCard extends StatelessWidget {
                           if (member.bio.trim().isNotEmpty)
                             Text(
                               member.bio,
+                              maxLines: 3,
+                              overflow: TextOverflow.ellipsis,
                               style: TextStyle(
                                 color: subtitleColor,
-                                height: 1.55,
+                                fontSize: 12.5,
+                                height: 1.45,
                               ),
                             ),
                           if (member.bio.trim().isNotEmpty &&
                               member.skills.isNotEmpty)
-                            const SizedBox(height: 14),
+                            const SizedBox(height: 12),
                           if (member.skills.isNotEmpty)
                             Wrap(
-                              spacing: 8,
-                              runSpacing: 8,
+                              spacing: 6,
+                              runSpacing: 6,
                               children: member.skills
-                                  .take(3)
+                                  .take(2)
                                   .map(
                                     (skill) => Container(
                                       padding: const EdgeInsets.symmetric(
-                                        horizontal: 10,
-                                        vertical: 7,
+                                        horizontal: 8,
+                                        vertical: 5,
                                       ),
                                       decoration: BoxDecoration(
                                         color: Colors.white.withValues(
@@ -3132,7 +3414,7 @@ class _TeamMemberSpotlightCard extends StatelessWidget {
                                         skill,
                                         style: TextStyle(
                                           color: titleColor,
-                                          fontSize: 11,
+                                          fontSize: 10,
                                           fontWeight: FontWeight.w700,
                                         ),
                                       ),
@@ -3144,16 +3426,26 @@ class _TeamMemberSpotlightCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 12),
                   Row(
                     children: [
                       Expanded(
                         child: FilledButton.icon(
                           onPressed: () async => onLike(),
+                          style: FilledButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 11,
+                            ),
+                            textStyle: compactButtonTextStyle,
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            visualDensity: VisualDensity.compact,
+                          ),
                           icon: Icon(
                             isLiked
                                 ? Icons.favorite_rounded
                                 : Icons.favorite_border,
+                            size: 16,
                           ),
                           label: Text(
                             isLiked ? 'تم الإعجاب' : 'إعجاب',
@@ -3161,11 +3453,23 @@ class _TeamMemberSpotlightCard extends StatelessWidget {
                           ),
                         ),
                       ),
-                      const SizedBox(width: 10),
+                      const SizedBox(width: 8),
                       Expanded(
                         child: OutlinedButton.icon(
                           onPressed: onComment,
-                          icon: const Icon(Icons.mode_comment_outlined),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 11,
+                            ),
+                            textStyle: compactButtonTextStyle,
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            visualDensity: VisualDensity.compact,
+                          ),
+                          icon: const Icon(
+                            Icons.mode_comment_outlined,
+                            size: 16,
+                          ),
                           label: Text(
                             'التعليقات',
                             overflow: TextOverflow.ellipsis,
@@ -3261,7 +3565,44 @@ class _MediaPreview extends StatelessWidget {
                 fit: StackFit.expand,
                 children: [
                   const ColoredBox(color: Colors.black),
-                  if (media.previewImageUrl != null)
+                  if (media.isVideo)
+                    Positioned.fill(
+                      child: IgnorePointer(
+                        child: AutoPlayVideoPreview(
+                          url: Uri.parse(media.url),
+                          fit: BoxFit.cover,
+                          placeholder: media.previewImageUrl != null
+                              ? AppNetworkImage(
+                                  url: media.previewImageUrl!,
+                                  fit: BoxFit.cover,
+                                  placeholder: Container(color: Colors.white10),
+                                  errorWidget: Container(
+                                    color: Colors.white10,
+                                    child: const Icon(
+                                      Icons.broken_image_outlined,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                )
+                              : Container(color: Colors.white10),
+                          errorWidget: media.previewImageUrl != null
+                              ? AppNetworkImage(
+                                  url: media.previewImageUrl!,
+                                  fit: BoxFit.cover,
+                                  placeholder: Container(color: Colors.white10),
+                                  errorWidget: Container(
+                                    color: Colors.white10,
+                                    child: const Icon(
+                                      Icons.broken_image_outlined,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                )
+                              : Container(color: Colors.white10),
+                        ),
+                      ),
+                    )
+                  else if (media.previewImageUrl != null)
                     Positioned.fill(
                       child: AppNetworkImage(
                         url: media.previewImageUrl!,

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../models/media.dart';
+import '../localization/app_localizations.dart';
 import '../widgets/app_network_image.dart';
 import '../widgets/app_video_player.dart';
+import '../widgets/auto_play_video_preview.dart';
 
 class VideoPlayerScreen extends StatelessWidget {
   final Media media;
@@ -21,7 +23,9 @@ class VideoPlayerScreen extends StatelessWidget {
     final coverUrl = media.thumbnail;
     final screenWidth = MediaQuery.sizeOf(context).width;
     final compact = screenWidth < 600;
-    final heroHeight = compact ? (screenWidth * 1.05).clamp(360.0, 460.0) : 420.0;
+    final heroHeight = compact
+        ? (screenWidth * 1.05).clamp(360.0, 460.0)
+        : 420.0;
     final playerPadding = compact
         ? const EdgeInsets.fromLTRB(12, 72, 12, 18)
         : const EdgeInsets.fromLTRB(16, 56, 16, 16);
@@ -76,7 +80,7 @@ class VideoPlayerScreen extends StatelessWidget {
                               ),
                               child: AppVideoPlayer(
                                 url: Uri.parse(media.url),
-                                autoPlay: false,
+                                autoPlay: true,
                                 looping: false,
                               ),
                             ),
@@ -106,8 +110,8 @@ class VideoPlayerScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 10),
                     if (media.description.trim().isNotEmpty) ...[
-                      const Text(
-                        'الوصف',
+                      Text(
+                        context.tr('الوصف'),
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w900,
@@ -116,13 +120,16 @@ class VideoPlayerScreen extends StatelessWidget {
                       const SizedBox(height: 6),
                       Text(
                         media.description,
-                        style: const TextStyle(color: Colors.white70, height: 1.5),
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          height: 1.5,
+                        ),
                       ),
                       const SizedBox(height: 14),
                     ],
                     if (media.crew.isNotEmpty) ...[
-                      const Text(
-                        'فريق العمل',
+                      Text(
+                        context.tr('Crew / فريق العمل'),
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w900,
@@ -134,7 +141,8 @@ class VideoPlayerScreen extends StatelessWidget {
                         child: ListView.separated(
                           scrollDirection: Axis.horizontal,
                           itemCount: media.crew.length,
-                          separatorBuilder: (_, __) => const SizedBox(width: 12),
+                          separatorBuilder: (_, __) =>
+                              const SizedBox(width: 12),
                           itemBuilder: (context, index) {
                             final member = media.crew[index];
                             return SizedBox(
@@ -147,7 +155,9 @@ class VideoPlayerScreen extends StatelessWidget {
                                       width: 70,
                                       height: 70,
                                       child: member.photoUrl.trim().isEmpty
-                                          ? const ColoredBox(color: Colors.white10)
+                                          ? const ColoredBox(
+                                              color: Colors.white10,
+                                            )
                                           : AppNetworkImage(
                                               url: member.photoUrl,
                                               fit: BoxFit.cover,
@@ -188,7 +198,8 @@ class VideoPlayerScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 14),
                     ],
-                    if (playlist != null && (playlistTitle?.trim().isNotEmpty ?? false)) ...[
+                    if (playlist != null &&
+                        (playlistTitle?.trim().isNotEmpty ?? false)) ...[
                       Text(
                         playlistTitle!,
                         style: const TextStyle(
@@ -204,7 +215,8 @@ class VideoPlayerScreen extends StatelessWidget {
                         child: ListView.separated(
                           scrollDirection: Axis.horizontal,
                           itemCount: playlist!.length,
-                          separatorBuilder: (_, __) => const SizedBox(width: 12),
+                          separatorBuilder: (_, __) =>
+                              const SizedBox(width: 12),
                           itemBuilder: (context, index) {
                             final item = playlist![index];
                             final thumb = item.thumbnail ?? '';
@@ -229,7 +241,46 @@ class VideoPlayerScreen extends StatelessWidget {
                                   child: Stack(
                                     fit: StackFit.expand,
                                     children: [
-                                      if (thumb.trim().isNotEmpty)
+                                      if (item.isVideo)
+                                        IgnorePointer(
+                                          child: AutoPlayVideoPreview(
+                                            url: Uri.parse(item.url),
+                                            fit: BoxFit.cover,
+                                            placeholder: thumb.trim().isNotEmpty
+                                                ? AppNetworkImage(
+                                                    url: thumb,
+                                                    fit: BoxFit.cover,
+                                                    placeholder:
+                                                        const ColoredBox(
+                                                          color: Colors.white10,
+                                                        ),
+                                                    errorWidget:
+                                                        const ColoredBox(
+                                                          color: Colors.white10,
+                                                        ),
+                                                  )
+                                                : const ColoredBox(
+                                                    color: Colors.white10,
+                                                  ),
+                                            errorWidget: thumb.trim().isNotEmpty
+                                                ? AppNetworkImage(
+                                                    url: thumb,
+                                                    fit: BoxFit.cover,
+                                                    placeholder:
+                                                        const ColoredBox(
+                                                          color: Colors.white10,
+                                                        ),
+                                                    errorWidget:
+                                                        const ColoredBox(
+                                                          color: Colors.white10,
+                                                        ),
+                                                  )
+                                                : const ColoredBox(
+                                                    color: Colors.white10,
+                                                  ),
+                                          ),
+                                        )
+                                      else if (thumb.trim().isNotEmpty)
                                         AppNetworkImage(
                                           url: thumb,
                                           fit: BoxFit.cover,
@@ -249,7 +300,9 @@ class VideoPlayerScreen extends StatelessWidget {
                                             end: Alignment.bottomCenter,
                                             colors: [
                                               Colors.transparent,
-                                              Colors.black.withValues(alpha: 0.86),
+                                              Colors.black.withValues(
+                                                alpha: 0.86,
+                                              ),
                                             ],
                                           ),
                                         ),
@@ -277,8 +330,9 @@ class VideoPlayerScreen extends StatelessWidget {
                                               vertical: 6,
                                             ),
                                             decoration: BoxDecoration(
-                                              color: const Color(0xFFE50914)
-                                                  .withValues(alpha: 0.75),
+                                              color: const Color(
+                                                0xFFE50914,
+                                              ).withValues(alpha: 0.75),
                                               borderRadius:
                                                   BorderRadius.circular(999),
                                             ),

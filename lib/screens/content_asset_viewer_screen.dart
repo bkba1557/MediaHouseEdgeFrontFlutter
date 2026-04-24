@@ -33,7 +33,7 @@ class ContentAssetViewerScreen extends StatelessWidget {
                 decoration: const BoxDecoration(color: Colors.black),
                 child: AppVideoPlayer(
                   url: Uri.parse(asset.url),
-                  autoPlay: false,
+                  autoPlay: true,
                   looping: false,
                 ),
               ),

@@ -410,6 +410,10 @@ class AdminHomeScreen extends StatelessWidget {
       'media_coverage',
       'audio_recordings',
       'gov_partnership_ads',
+      'artist_contracts',
+      'behind_the_scenes',
+      'dj_booking',
+      'international_institutions',
     ];
 
     String type = typeOptions.contains(media.type) ? media.type : 'image';
@@ -446,7 +450,7 @@ class AdminHomeScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: 10),
                         DropdownButtonFormField<String>(
-                          value: type,
+                          initialValue: type,
                           decoration: const InputDecoration(labelText: 'Type'),
                           items: typeOptions
                               .map(
@@ -461,7 +465,7 @@ class AdminHomeScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: 10),
                         DropdownButtonFormField<String>(
-                          value: category,
+                          initialValue: category,
                           decoration: const InputDecoration(
                             labelText: 'Category',
                           ),

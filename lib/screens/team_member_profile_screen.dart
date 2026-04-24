@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../localization/app_localizations.dart';
 import '../models/team_member.dart';
 import '../providers/auth_provider.dart';
 import '../providers/team_provider.dart';
@@ -66,7 +67,7 @@ class _TeamMemberProfileScreenState extends State<TeamMemberProfileScreen> {
                 onPressed: () =>
                     showTeamMemberCommentsSheet(context, member: member),
                 icon: const Icon(Icons.mode_comment_outlined),
-                tooltip: 'التعليقات',
+                tooltip: context.tr('التعليقات'),
               ),
             ],
           ),
@@ -90,10 +91,13 @@ class _TeamMemberProfileScreenState extends State<TeamMemberProfileScreen> {
                       ),
                       const SizedBox(height: 28),
                       _ProfileSectionHeader(
-                        title: 'أعماله',
+                        title: context.tr('أعماله'),
                         subtitle: member.portfolio.isEmpty
-                            ? 'لا توجد أعمال مضافة حاليًا'
-                            : '${member.portfolio.length} عنصر في المعرض',
+                            ? context.tr('لا توجد أعمال مضافة حاليًا')
+                            : context.tr(
+                                '{count} عنصر في المعرض',
+                                params: {'count': '${member.portfolio.length}'},
+                              ),
                       ),
                       const SizedBox(height: 12),
                       if (member.portfolio.isEmpty)
@@ -144,9 +148,11 @@ class _TeamMemberProfileScreenState extends State<TeamMemberProfileScreen> {
                           },
                         ),
                       const SizedBox(height: 28),
-                      const _ProfileSectionHeader(
-                        title: 'التعليقات',
-                        subtitle: 'آراء الزوار والمستخدمين على هذا العضو',
+                      _ProfileSectionHeader(
+                        title: context.tr('التعليقات'),
+                        subtitle: context.tr(
+                          'آراء الزوار والمستخدمين على هذا العضو',
+                        ),
                       ),
                       const SizedBox(height: 12),
                       Container(
@@ -159,7 +165,7 @@ class _TeamMemberProfileScreenState extends State<TeamMemberProfileScreen> {
                         ),
                         child: TeamMemberCommentsPanel(
                           memberId: member.id,
-                          title: 'أضف رأيك',
+                          title: context.tr('أضف رأيك'),
                         ),
                       ),
                     ],
@@ -278,8 +284,8 @@ class _ProfileDetails extends StatelessWidget {
               color: const Color(0xFFE50914).withValues(alpha: 0.34),
             ),
           ),
-          child: const Text(
-            'ملف عضو الفريق',
+          child: Text(
+            context.tr('ملف عضو الفريق'),
             style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12),
           ),
         ),
@@ -304,11 +310,17 @@ class _ProfileDetails extends StatelessWidget {
           children: [
             _ProfileStatChip(
               icon: Icons.work_outline,
-              label: '${member.portfolio.length} أعمال',
+              label: context.tr(
+                '{count} أعمال',
+                params: {'count': '${member.portfolio.length}'},
+              ),
             ),
             _ProfileStatChip(
               icon: Icons.auto_awesome_outlined,
-              label: '${member.skills.length} مهارات',
+              label: context.tr(
+                '{count} مهارات',
+                params: {'count': '${member.skills.length}'},
+              ),
             ),
           ],
         ),
@@ -324,19 +336,21 @@ class _ProfileDetails extends StatelessWidget {
               icon: Icon(
                 isLiked ? Icons.favorite_rounded : Icons.favorite_border,
               ),
-              label: Text(isLiked ? 'تم الإعجاب' : 'إعجاب'),
+              label: Text(
+                isLiked ? context.tr('تم الإعجاب') : context.tr('إعجاب'),
+              ),
             ),
             OutlinedButton.icon(
               onPressed: onComment,
               icon: const Icon(Icons.mode_comment_outlined),
-              label: const Text('عرض التعليقات'),
+              label: Text(context.tr('عرض التعليقات')),
             ),
           ],
         ),
         if (member.bio.trim().isNotEmpty) ...[
           const SizedBox(height: 18),
           _ProfileInfoPanel(
-            title: 'نبذة',
+            title: context.tr('نبذة'),
             child: Text(
               member.bio,
               style: const TextStyle(color: Colors.white70, height: 1.8),
@@ -346,7 +360,7 @@ class _ProfileDetails extends StatelessWidget {
         if (member.skills.isNotEmpty) ...[
           const SizedBox(height: 18),
           _ProfileInfoPanel(
-            title: 'المهارات',
+            title: context.tr('المهارات'),
             child: Wrap(
               spacing: 10,
               runSpacing: 10,
@@ -583,14 +597,14 @@ class _EmptyPortfolioPanel extends StatelessWidget {
           ],
         ),
       ),
-      child: const Column(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.work_outline, color: Color(0xFFE50914), size: 22),
-          SizedBox(height: 10),
+          const Icon(Icons.work_outline, color: Color(0xFFE50914), size: 22),
+          const SizedBox(height: 10),
           Text(
-            'لا توجد أعمال مضافة لهذا العضو حاليًا.',
-            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+            context.tr('لا توجد أعمال مضافة لهذا العضو حاليًا.'),
+            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
           ),
         ],
       ),

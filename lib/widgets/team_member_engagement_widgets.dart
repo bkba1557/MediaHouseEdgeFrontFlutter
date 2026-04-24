@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../localization/app_localizations.dart';
 import '../models/team_member.dart';
 import '../providers/auth_provider.dart';
 import '../providers/team_provider.dart';
@@ -17,24 +18,24 @@ Future<void> showTeamMemberCommentsSheet(
     builder: (context) {
       return FractionallySizedBox(
         heightFactor: 0.88,
-        child: Directionality(
-          textDirection: TextDirection.rtl,
-          child: Container(
-            decoration: const BoxDecoration(
-              color: Color(0xFF121212),
-              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-            ),
-            child: SafeArea(
-              top: false,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
-                child: TeamMemberCommentsPanel(
-                  memberId: member.id,
-                  title: 'تعليقات ${member.name}',
-                  compactComposer: false,
-                  showCloseButton: true,
-                  expandList: true,
+        child: Container(
+          decoration: const BoxDecoration(
+            color: Color(0xFF121212),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: SafeArea(
+            top: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+              child: TeamMemberCommentsPanel(
+                memberId: member.id,
+                title: context.tr(
+                  'تعليقات {name}',
+                  params: {'name': member.name},
                 ),
+                compactComposer: false,
+                showCloseButton: true,
+                expandList: true,
               ),
             ),
           ),
@@ -64,40 +65,115 @@ class TeamMemberMetricChips extends StatelessWidget {
       _MetricData(
         icon: Icons.visibility_outlined,
         value: '${member.viewsCount}',
-        label: 'مشاهدة',
+        label: context.tr('مشاهدة'),
       ),
       _MetricData(
         icon: Icons.analytics_outlined,
         value: '${_formatPercent(member.viewSharePercent)}%',
-        label: 'النسبة',
+        label: context.tr('النسبة'),
       ),
       _MetricData(
         icon: Icons.favorite_border,
         value: '${member.likesCount}',
-        label: 'إعجاب',
+        label: context.tr('إعجاب'),
       ),
       _MetricData(
         icon: Icons.mode_comment_outlined,
         value: '${member.commentsCount}',
-        label: 'تعليق',
+        label: context.tr('تعليق'),
       ),
     ];
 
-    return Row(
-      children: [
-        for (var index = 0; index < stats.length; index++) ...[
-          if (index > 0) SizedBox(width: dense ? 6 : 8),
-          Expanded(
-            child: _MetricChip(
-              icon: stats[index].icon,
-              value: stats[index].value,
-              label: stats[index].label,
-              dense: dense,
-              foreground: foreground,
+    if (dense) {
+      return Row(
+        children: [
+          for (var index = 0; index < stats.length; index++) ...[
+            if (index > 0) const SizedBox(width: 2),
+            Expanded(
+              child: _MetricChip(
+                icon: stats[index].icon,
+                value: stats[index].value,
+                label: stats[index].label,
+                dense: true,
+                foreground: foreground,
+              ),
             ),
-          ),
+          ],
         ],
-      ],
+      );
+    }
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const spacing = 8.0;
+        const minItemWidth = 94.0;
+        final availableWidth = constraints.maxWidth.isFinite
+            ? constraints.maxWidth
+            : 0.0;
+        final neededWidth =
+            (minItemWidth * stats.length) + (spacing * (stats.length - 1));
+        if (availableWidth <= 0) {
+          return Row(
+            children: [
+              for (var index = 0; index < stats.length; index++) ...[
+                if (index > 0) const SizedBox(width: 8),
+                Expanded(
+                  child: _MetricChip(
+                    icon: stats[index].icon,
+                    value: stats[index].value,
+                    label: stats[index].label,
+                    dense: dense,
+                    foreground: foreground,
+                  ),
+                ),
+              ],
+            ],
+          );
+        }
+        final useWrappedLayout =
+            availableWidth > 0 && availableWidth < neededWidth;
+
+        if (useWrappedLayout) {
+          final itemWidth = (availableWidth - spacing) / 2;
+          return Wrap(
+            spacing: spacing,
+            runSpacing: spacing,
+            children: [
+              for (final stat in stats)
+                SizedBox(
+                  width: itemWidth,
+                  child: _MetricChip(
+                    icon: stat.icon,
+                    value: stat.value,
+                    label: stat.label,
+                    dense: dense,
+                    foreground: foreground,
+                  ),
+                ),
+            ],
+          );
+        }
+
+        final children = [
+          for (var index = 0; index < stats.length; index++) ...[
+            if (index > 0) const SizedBox(width: 8),
+            SizedBox(
+              width:
+                  (availableWidth - (spacing * (stats.length - 1))) /
+                  stats.length,
+              child: _MetricChip(
+                icon: stats[index].icon,
+                value: stats[index].value,
+                label: stats[index].label,
+                dense: dense,
+                foreground: foreground,
+              ),
+            ),
+          ],
+        ];
+
+        return Row(children: children);
+      },
     );
   }
 
@@ -165,11 +241,11 @@ class _TeamMemberCommentsPanelState extends State<TeamMemberCommentsPanel> {
     final message = _messageController.text.trim();
 
     if (authorName.isEmpty) {
-      _showSnackBar('اكتب اسمك قبل إرسال التعليق');
+      _showSnackBar(context.tr('اكتب اسمك قبل إرسال التعليق'));
       return;
     }
     if (message.isEmpty) {
-      _showSnackBar('اكتب تعليقك أولًا');
+      _showSnackBar(context.tr('اكتب تعليقك أولًا'));
       return;
     }
 
@@ -184,10 +260,12 @@ class _TeamMemberCommentsPanelState extends State<TeamMemberCommentsPanel> {
       await VisitorIdentityService.saveVisitorDisplayName(authorName);
       _messageController.clear();
       if (!mounted) return;
-      _showSnackBar('تم إرسال التعليق');
+      _showSnackBar(context.tr('تم إرسال التعليق'));
     } catch (error) {
       if (!mounted) return;
-      _showSnackBar('تعذر إرسال التعليق: $error');
+      _showSnackBar(
+        context.tr('تعذر إرسال التعليق: {error}', params: {'error': '$error'}),
+      );
     } finally {
       if (mounted) {
         setState(() => _isSubmitting = false);
@@ -230,7 +308,7 @@ class _TeamMemberCommentsPanelState extends State<TeamMemberCommentsPanel> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    widget.title,
+                    context.tr(widget.title),
                     style: const TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.w900,
@@ -239,8 +317,11 @@ class _TeamMemberCommentsPanelState extends State<TeamMemberCommentsPanel> {
                   const SizedBox(height: 4),
                   Text(
                     comments.isEmpty
-                        ? 'لا توجد تعليقات حتى الآن'
-                        : '${comments.length} تعليق متاح الآن',
+                        ? context.tr('لا توجد تعليقات حتى الآن')
+                        : context.tr(
+                            '{count} تعليق متاح الآن',
+                            params: {'count': '${comments.length}'},
+                          ),
                     style: TextStyle(
                       color: isLight ? Colors.black54 : Colors.white60,
                     ),
@@ -272,8 +353,8 @@ class _TeamMemberCommentsPanelState extends State<TeamMemberCommentsPanel> {
                 controller: _nameController,
                 readOnly: readOnlyName,
                 decoration: InputDecoration(
-                  labelText: 'الاسم',
-                  hintText: 'اسمك الظاهر مع التعليق',
+                  labelText: context.tr('الاسم'),
+                  hintText: context.tr('اسمك الظاهر مع التعليق'),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
                   ),
@@ -285,8 +366,8 @@ class _TeamMemberCommentsPanelState extends State<TeamMemberCommentsPanel> {
                 minLines: widget.compactComposer ? 2 : 3,
                 maxLines: widget.compactComposer ? 4 : 5,
                 decoration: InputDecoration(
-                  labelText: 'أضف تعليقًا',
-                  hintText: 'اكتب رأيك أو ملاحظتك عن عضو الفريق',
+                  labelText: context.tr('أضف تعليقًا'),
+                  hintText: context.tr('اكتب رأيك أو ملاحظتك عن عضو الفريق'),
                   alignLabelWithHint: true,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
@@ -305,7 +386,11 @@ class _TeamMemberCommentsPanelState extends State<TeamMemberCommentsPanel> {
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
                       : const Icon(Icons.send_rounded),
-                  label: Text(_isSubmitting ? 'جارٍ الإرسال' : 'إرسال التعليق'),
+                  label: Text(
+                    _isSubmitting
+                        ? context.tr('جارٍ الإرسال')
+                        : context.tr('إرسال التعليق'),
+                  ),
                 ),
               ),
             ],
@@ -332,9 +417,9 @@ class _TeamMemberCommentsPanelState extends State<TeamMemberCommentsPanel> {
           borderRadius: BorderRadius.circular(18),
           border: Border.all(color: Colors.white12),
         ),
-        child: const Text(
-          'ابدأ أول تعليق لهذا العضو.',
-          style: TextStyle(fontWeight: FontWeight.w700),
+        child: Text(
+          context.tr('ابدأ أول تعليق لهذا العضو.'),
+          style: const TextStyle(fontWeight: FontWeight.w700),
         ),
       );
     }
@@ -373,19 +458,19 @@ class _MetricChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: EdgeInsets.symmetric(
-        horizontal: dense ? 8 : 10,
+        horizontal: dense ? 5 : 10,
         vertical: dense ? 8 : 10,
       ),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(dense ? 14 : 16),
         border: Border.all(color: Colors.white12),
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(icon, size: dense ? 16 : 18, color: const Color(0xFFE50914)),
-          SizedBox(height: dense ? 6 : 8),
+          Icon(icon, size: dense ? 13 : 18, color: const Color(0xFFE50914)),
+          SizedBox(height: dense ? 4 : 8),
           Text(
             value,
             maxLines: 1,
@@ -393,11 +478,12 @@ class _MetricChip extends StatelessWidget {
             textAlign: TextAlign.center,
             style: TextStyle(
               color: foreground,
-              fontSize: dense ? 12 : 14,
+              fontSize: dense ? 10 : 14,
               fontWeight: FontWeight.w900,
+              height: 1.1,
             ),
           ),
-          const SizedBox(height: 2),
+          SizedBox(height: dense ? 1 : 2),
           Text(
             label,
             maxLines: 1,
@@ -405,8 +491,9 @@ class _MetricChip extends StatelessWidget {
             textAlign: TextAlign.center,
             style: TextStyle(
               color: foreground,
-              fontSize: dense ? 9 : 10,
+              fontSize: dense ? 7.5 : 10,
               fontWeight: FontWeight.w800,
+              height: 1.1,
             ),
           ),
         ],
@@ -459,7 +546,7 @@ class _CommentCard extends StatelessWidget {
                 ),
               ),
               Text(
-                _formatCommentDate(comment.createdAt),
+                _formatCommentDate(context, comment.createdAt),
                 style: TextStyle(
                   fontSize: 11,
                   color: isLight ? Colors.black54 : Colors.white54,
@@ -480,14 +567,29 @@ class _CommentCard extends StatelessWidget {
     );
   }
 
-  static String _formatCommentDate(DateTime? date) {
-    if (date == null) return 'الآن';
+  static String _formatCommentDate(BuildContext context, DateTime? date) {
+    if (date == null) return context.tr('الآن');
     final now = DateTime.now();
     final difference = now.difference(date);
-    if (difference.inMinutes < 1) return 'الآن';
-    if (difference.inHours < 1) return 'منذ ${difference.inMinutes} د';
-    if (difference.inDays < 1) return 'منذ ${difference.inHours} س';
-    if (difference.inDays < 30) return 'منذ ${difference.inDays} يوم';
+    if (difference.inMinutes < 1) return context.tr('الآن');
+    if (difference.inHours < 1) {
+      return context.tr(
+        'منذ {value} د',
+        params: {'value': '${difference.inMinutes}'},
+      );
+    }
+    if (difference.inDays < 1) {
+      return context.tr(
+        'منذ {value} س',
+        params: {'value': '${difference.inHours}'},
+      );
+    }
+    if (difference.inDays < 30) {
+      return context.tr(
+        'منذ {value} يوم',
+        params: {'value': '${difference.inDays}'},
+      );
+    }
     return '${date.year}/${date.month.toString().padLeft(2, '0')}/${date.day.toString().padLeft(2, '0')}';
   }
 }

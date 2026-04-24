@@ -1,5 +1,6 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import '../models/media.dart';
+import '../localization/app_localizations.dart';
 import '../widgets/app_network_image.dart';
 import '../widgets/app_video_player.dart';
 import 'dart:math' as math;
@@ -27,7 +28,7 @@ class MediaDetailScreen extends StatelessWidget {
                 color: Colors.black,
                 child: AppVideoPlayer(
                   url: Uri.parse(media.url),
-                  autoPlay: false,
+                  autoPlay: true,
                   looping: false,
                 ),
               ),
@@ -48,25 +49,34 @@ class MediaDetailScreen extends StatelessWidget {
             ),
           Padding(
             padding: const EdgeInsets.all(16),
-            child: Text(media.description, style: const TextStyle(fontSize: 16)),
+            child: Text(
+              media.description,
+              style: const TextStyle(fontSize: 16),
+            ),
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Text(
-              'Category: ${media.category}',
+              context.tr(
+                'Category: {category}',
+                params: {'category': media.category},
+              ),
               style: const TextStyle(fontSize: 14, color: Colors.grey),
             ),
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Text('Views: ${media.views}', style: const TextStyle(fontSize: 14)),
+            child: Text(
+              context.tr('Views: {views}', params: {'views': '${media.views}'}),
+              style: const TextStyle(fontSize: 14),
+            ),
           ),
           if (media.crew.isNotEmpty) ...[
             const SizedBox(height: 8),
-            const Padding(
+            Padding(
               padding: EdgeInsets.symmetric(horizontal: 16),
               child: Text(
-                'Crew / فريق العمل',
+                context.tr('Crew / فريق العمل'),
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
               ),
             ),
@@ -94,10 +104,12 @@ class MediaDetailScreen extends StatelessWidget {
                                 : AppNetworkImage(
                                     url: member.photoUrl,
                                     fit: BoxFit.cover,
-                                    placeholder:
-                                        const ColoredBox(color: Colors.white10),
-                                    errorWidget:
-                                        const ColoredBox(color: Colors.white10),
+                                    placeholder: const ColoredBox(
+                                      color: Colors.white10,
+                                    ),
+                                    errorWidget: const ColoredBox(
+                                      color: Colors.white10,
+                                    ),
                                   ),
                           ),
                         ),

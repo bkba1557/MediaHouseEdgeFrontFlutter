@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/content_asset.dart';
 import 'app_network_image.dart';
+import 'auto_play_video_preview.dart';
 
 class ContentAssetPreviewTile extends StatelessWidget {
   final ContentAsset asset;
@@ -42,7 +43,38 @@ class ContentAssetPreviewTile extends StatelessWidget {
             child: Stack(
               fit: StackFit.expand,
               children: [
-                if (previewUrl != null)
+                if (asset.isVideo)
+                  IgnorePointer(
+                    child: AutoPlayVideoPreview(
+                      url: Uri.parse(asset.url),
+                      fit: BoxFit.cover,
+                      placeholder: previewUrl != null
+                          ? AppNetworkImage(
+                              url: previewUrl,
+                              fit: BoxFit.cover,
+                              placeholder: const ColoredBox(
+                                color: Colors.white10,
+                              ),
+                              errorWidget: const ColoredBox(
+                                color: Colors.white10,
+                              ),
+                            )
+                          : const ColoredBox(color: Colors.white10),
+                      errorWidget: previewUrl != null
+                          ? AppNetworkImage(
+                              url: previewUrl,
+                              fit: BoxFit.cover,
+                              placeholder: const ColoredBox(
+                                color: Colors.white10,
+                              ),
+                              errorWidget: const ColoredBox(
+                                color: Colors.white10,
+                              ),
+                            )
+                          : const ColoredBox(color: Colors.white10),
+                    ),
+                  )
+                else if (previewUrl != null)
                   AppNetworkImage(
                     url: previewUrl,
                     fit: BoxFit.cover,

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../localization/app_localizations.dart';
 import '../models/about_page_content.dart';
 import '../providers/about_provider.dart';
 import '../widgets/content_asset_preview_tile.dart';
@@ -26,7 +27,7 @@ class _AboutScreenState extends State<AboutScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('من نحن')),
+      appBar: AppBar(title: Text(context.tr('من نحن'))),
       body: Consumer<AboutProvider>(
         builder: (context, provider, _) {
           final page = provider.page;
@@ -64,8 +65,10 @@ class _AboutScreenState extends State<AboutScreen> {
                               border: Border.all(color: Colors.white12),
                               color: Colors.white.withValues(alpha: 0.04),
                             ),
-                            child: const Text(
-                              'لا يوجد محتوى مضاف في صفحة من نحن حتى الآن.',
+                            child: Text(
+                              context.tr(
+                                'لا يوجد محتوى مضاف في صفحة من نحن حتى الآن.',
+                              ),
                             ),
                           )
                         else
@@ -115,7 +118,9 @@ class _AboutHero extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            page.heroTitle.trim().isEmpty ? 'من نحن' : page.heroTitle,
+            page.heroTitle.trim().isEmpty
+                ? context.tr('من نحن')
+                : page.heroTitle,
             style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w900),
           ),
           if (page.heroSubtitle.trim().isNotEmpty) ...[

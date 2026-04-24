@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../localization/app_localizations.dart';
 import '../models/media.dart';
 import '../providers/media_provider.dart';
 import '../widgets/app_network_image.dart';
+import '../widgets/auto_play_video_preview.dart';
 import '../widgets/service_request_sheet.dart';
 import 'image_viewer_screen.dart';
 import 'story_view_screen.dart';
@@ -50,7 +52,7 @@ class _ServiceFeedScreenState extends State<ServiceFeedScreen> {
     await showServiceRequestSheet(
       context,
       serviceCategory: widget.serviceKey,
-      serviceTitle: widget.serviceTitle,
+      serviceTitle: context.tr(widget.serviceTitle),
     );
   }
 
@@ -58,12 +60,12 @@ class _ServiceFeedScreenState extends State<ServiceFeedScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.serviceTitle),
+        title: Text(context.tr(widget.serviceTitle)),
         actions: [
           TextButton.icon(
             onPressed: _openRequestSheet,
             icon: const Icon(Icons.assignment_outlined),
-            label: const Text('تقديم طلب'),
+            label: Text(context.tr('تقديم طلب')),
           ),
           const SizedBox(width: 6),
         ],
@@ -176,9 +178,21 @@ class _FiltersBar extends StatelessWidget {
       spacing: 10,
       runSpacing: 10,
       children: [
-        chip(_ServiceFeedFilter.all, 'الكل', Icons.grid_view_outlined),
-        chip(_ServiceFeedFilter.images, 'صور', Icons.image_outlined),
-        chip(_ServiceFeedFilter.videos, 'فيديو', Icons.play_circle_outline),
+        chip(
+          _ServiceFeedFilter.all,
+          context.tr('الكل'),
+          Icons.grid_view_outlined,
+        ),
+        chip(
+          _ServiceFeedFilter.images,
+          context.tr('صور'),
+          Icons.image_outlined,
+        ),
+        chip(
+          _ServiceFeedFilter.videos,
+          context.tr('فيديو'),
+          Icons.play_circle_outline,
+        ),
       ],
     );
   }
@@ -222,7 +236,42 @@ class _MediaTile extends StatelessWidget {
           fit: StackFit.expand,
           children: [
             const ColoredBox(color: Colors.black),
-            if (media.previewImageUrl != null)
+            if (media.isVideo)
+              IgnorePointer(
+                child: AutoPlayVideoPreview(
+                  url: Uri.parse(media.url),
+                  fit: BoxFit.cover,
+                  placeholder: media.previewImageUrl != null
+                      ? AppNetworkImage(
+                          url: media.previewImageUrl!,
+                          fit: BoxFit.contain,
+                          placeholder: Container(color: Colors.white10),
+                          errorWidget: Container(
+                            color: Colors.white10,
+                            child: const Icon(
+                              Icons.broken_image_outlined,
+                              color: Colors.white,
+                            ),
+                          ),
+                        )
+                      : const ColoredBox(color: Colors.white10),
+                  errorWidget: media.previewImageUrl != null
+                      ? AppNetworkImage(
+                          url: media.previewImageUrl!,
+                          fit: BoxFit.contain,
+                          placeholder: Container(color: Colors.white10),
+                          errorWidget: Container(
+                            color: Colors.white10,
+                            child: const Icon(
+                              Icons.broken_image_outlined,
+                              color: Colors.white,
+                            ),
+                          ),
+                        )
+                      : const ColoredBox(color: Colors.white10),
+                ),
+              )
+            else if (media.previewImageUrl != null)
               AppNetworkImage(
                 url: media.previewImageUrl!,
                 fit: BoxFit.contain,
@@ -298,14 +347,17 @@ class _EmptyState extends StatelessWidget {
                 color: Colors.white54,
               ),
               const SizedBox(height: 12),
-              const Text(
-                'لا توجد منشورات لهذه الخدمة حالياً',
+              Text(
+                context.tr('لا توجد منشورات لهذه الخدمة حالياً'),
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
               const SizedBox(height: 6),
               Text(
-                subtitle,
+                context.tr(subtitle),
                 textAlign: TextAlign.center,
                 style: const TextStyle(color: Colors.white70),
               ),
@@ -313,7 +365,7 @@ class _EmptyState extends StatelessWidget {
               ElevatedButton.icon(
                 onPressed: onRequest,
                 icon: const Icon(Icons.assignment_outlined),
-                label: const Text('تقديم طلب الخدمة'),
+                label: Text(context.tr('تقديم طلب الخدمة')),
               ),
             ],
           ),
@@ -345,10 +397,13 @@ class _ErrorState extends StatelessWidget {
                 color: Colors.white54,
               ),
               const SizedBox(height: 12),
-              const Text(
-                'حصل خطأ أثناء تحميل المحتوى',
+              Text(
+                context.tr('حصل خطأ أثناء تحميل المحتوى'),
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
               const SizedBox(height: 8),
               Text(
@@ -360,7 +415,7 @@ class _ErrorState extends StatelessWidget {
               ElevatedButton.icon(
                 onPressed: onRetry,
                 icon: const Icon(Icons.refresh),
-                label: const Text('إعادة المحاولة'),
+                label: Text(context.tr('إعادة المحاولة')),
               ),
             ],
           ),

@@ -4,8 +4,10 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 
 import 'firebase_options.dart';
+import 'localization/app_localizations.dart';
 import 'providers/auth_provider.dart';
 import 'providers/about_provider.dart';
+import 'providers/locale_provider.dart';
 import 'providers/media_provider.dart';
 import 'providers/response_provider.dart';
 import 'providers/team_provider.dart';
@@ -29,67 +31,75 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
+        ChangeNotifierProvider(create: (_) => LocaleProvider()),
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => MediaProvider()),
         ChangeNotifierProvider(create: (_) => ResponseProvider()),
         ChangeNotifierProvider(create: (_) => TeamProvider()),
         ChangeNotifierProvider(create: (_) => AboutProvider()),
       ],
-      child: MaterialApp(
-        title: 'Media House Edge',
-        debugShowCheckedModeBanner: false,
-        locale: const Locale('ar'),
-        supportedLocales: const [Locale('ar'), Locale('en')],
-        localizationsDelegates: const [
-          GlobalMaterialLocalizations.delegate,
-          GlobalWidgetsLocalizations.delegate,
-          GlobalCupertinoLocalizations.delegate,
-        ],
-        builder: (context, child) => Directionality(
-          textDirection: TextDirection.rtl,
-          child: child ?? const SizedBox.shrink(),
-        ),
-        theme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(
-            seedColor: const Color(0xFFE50914),
-            brightness: Brightness.dark,
-          ),
-          fontFamily: 'Petrichor',
-          fontFamilyFallback: const [
-            'Cairo',
-            'Tajawal',
-            'Arial',
-            'Roboto',
-            'sans-serif',
-          ],
-          scaffoldBackgroundColor: Colors.black,
-          visualDensity: VisualDensity.adaptivePlatformDensity,
-          appBarTheme: const AppBarTheme(
-            elevation: 0,
-            centerTitle: true,
-            backgroundColor: Colors.transparent,
-            foregroundColor: Colors.white,
-          ),
-          elevatedButtonTheme: ElevatedButtonThemeData(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFE50914),
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+      child: Consumer<LocaleProvider>(
+        builder: (context, localeProvider, _) {
+          return MaterialApp(
+            onGenerateTitle: (context) => context.tr('Media House Edge'),
+            debugShowCheckedModeBanner: false,
+            locale: localeProvider.locale,
+            supportedLocales: AppLocalizations.supportedLocales,
+            localizationsDelegates: const [
+              AppLocalizations.delegate,
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
+            builder: (context, child) => Directionality(
+              textDirection: localeProvider.isRtl
+                  ? TextDirection.rtl
+                  : TextDirection.ltr,
+              child: child ?? const SizedBox.shrink(),
+            ),
+            theme: ThemeData(
+              colorScheme: ColorScheme.fromSeed(
+                seedColor: const Color(0xFFE50914),
+                brightness: Brightness.dark,
+              ),
+              fontFamily: 'Petrichor',
+              fontFamilyFallback: const [
+                'Cairo',
+                'Tajawal',
+                'Arial',
+                'Roboto',
+                'sans-serif',
+              ],
+              scaffoldBackgroundColor: Colors.black,
+              visualDensity: VisualDensity.adaptivePlatformDensity,
+              appBarTheme: const AppBarTheme(
+                elevation: 0,
+                centerTitle: true,
+                backgroundColor: Colors.transparent,
+                foregroundColor: Colors.white,
+              ),
+              elevatedButtonTheme: ElevatedButtonThemeData(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFE50914),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
               ),
             ),
-          ),
-        ),
-        onGenerateInitialRoutes: (_) => [
-          MaterialPageRoute(
-            settings: const RouteSettings(name: '/'),
-            builder: (_) => const SplashScreen(),
-          ),
-        ],
-        routes: {
-          '/login': (context) => const LoginScreen(),
-          '/home': (context) => const HomeScreen(),
-          '/admin': (context) => const AdminDashboard(),
+            onGenerateInitialRoutes: (_) => [
+              MaterialPageRoute(
+                settings: const RouteSettings(name: '/'),
+                builder: (_) => const SplashScreen(),
+              ),
+            ],
+            routes: {
+              '/login': (context) => const LoginScreen(),
+              '/home': (context) => const HomeScreen(),
+              '/admin': (context) => const AdminDashboard(),
+            },
+          );
         },
       ),
     );

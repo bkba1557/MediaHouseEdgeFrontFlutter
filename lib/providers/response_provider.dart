@@ -7,15 +7,24 @@ import '../models/response.dart';
 class ResponseProvider with ChangeNotifier {
   List<ClientResponse> _responses = [];
   List<ClientResponse> _serviceRequests = [];
+  List<ClientResponse> _myServiceRequests = [];
   bool _isLoading = false;
   bool _isLoadingServiceRequests = false;
+  bool _isLoadingMyServiceRequests = false;
   bool _isSubmittingServiceRequest = false;
+  bool _isSavingContract = false;
 
   List<ClientResponse> get responses => _responses;
   List<ClientResponse> get serviceRequests => _serviceRequests;
+  List<ClientResponse> get myServiceRequests => _myServiceRequests;
+  List<ResponseContract> get myContracts => _myServiceRequests
+      .expand((request) => request.contracts)
+      .toList(growable: false);
   bool get isLoading => _isLoading;
   bool get isLoadingServiceRequests => _isLoadingServiceRequests;
+  bool get isLoadingMyServiceRequests => _isLoadingMyServiceRequests;
   bool get isSubmittingServiceRequest => _isSubmittingServiceRequest;
+  bool get isSavingContract => _isSavingContract;
 
   String get _baseUrl => AppConfig.apiBaseUrl;
 
@@ -25,6 +34,7 @@ class ResponseProvider with ChangeNotifier {
     required String message,
     int? rating,
     String? mediaId,
+    String? token,
   }) async {
     _isLoading = true;
     notifyListeners();
@@ -32,7 +42,11 @@ class ResponseProvider with ChangeNotifier {
     try {
       final response = await http.post(
         Uri.parse('$_baseUrl/responses/submit'),
-        headers: {'Content-Type': 'application/json'},
+        headers: {
+          'Content-Type': 'application/json',
+          if (token != null && token.isNotEmpty)
+            'Authorization': 'Bearer $token',
+        },
         body: json.encode({
           'clientName': clientName,
           'clientEmail': clientEmail,
@@ -83,8 +97,9 @@ class ResponseProvider with ChangeNotifier {
 
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);
-        _serviceRequests =
-            data.map((json) => ClientResponse.fromJson(json)).toList();
+        _serviceRequests = data
+            .map((json) => ClientResponse.fromJson(json))
+            .toList();
       }
     } finally {
       _isLoadingServiceRequests = false;
@@ -101,6 +116,7 @@ class ResponseProvider with ChangeNotifier {
     required String clientPhoneDialCode,
     required String clientPhoneNumber,
     required String message,
+    String? token,
   }) async {
     _isSubmittingServiceRequest = true;
     notifyListeners();
@@ -108,7 +124,11 @@ class ResponseProvider with ChangeNotifier {
     try {
       final response = await http.post(
         Uri.parse('$_baseUrl/responses/submit'),
-        headers: {'Content-Type': 'application/json'},
+        headers: {
+          'Content-Type': 'application/json',
+          if (token != null && token.isNotEmpty)
+            'Authorization': 'Bearer $token',
+        },
         body: json.encode({
           'clientName': clientName,
           'clientEmail': clientEmail,
@@ -126,6 +146,67 @@ class ResponseProvider with ChangeNotifier {
       }
     } finally {
       _isSubmittingServiceRequest = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> fetchMyServiceRequests(String token) async {
+    _isLoadingMyServiceRequests = true;
+    notifyListeners();
+
+    try {
+      final response = await http.get(
+        Uri.parse('$_baseUrl/responses/mine?kind=service'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body);
+        _myServiceRequests = data
+            .map((json) => ClientResponse.fromJson(json))
+            .toList();
+      } else {
+        throw Exception('Failed to fetch your service requests');
+      }
+    } finally {
+      _isLoadingMyServiceRequests = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> addContractToServiceRequest({
+    required String responseId,
+    required String title,
+    required String token,
+    String? contractNumber,
+    String? status,
+    String? description,
+    String? documentUrl,
+  }) async {
+    _isSavingContract = true;
+    notifyListeners();
+
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/responses/$responseId/contracts'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: json.encode({
+          'title': title,
+          'contractNumber': contractNumber,
+          'status': status,
+          'description': description,
+          'documentUrl': documentUrl,
+        }),
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception('Failed to add contract');
+      }
+    } finally {
+      _isSavingContract = false;
       notifyListeners();
     }
   }

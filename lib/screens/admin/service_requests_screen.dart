@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../models/response.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/response_provider.dart';
 
@@ -113,6 +114,161 @@ class _AdminServiceRequestsScreenState
     ).whenComplete(replyController.dispose);
   }
 
+  Future<void> _showAddContractDialog(ClientResponse response) async {
+    final titleController = TextEditingController();
+    final numberController = TextEditingController();
+    final descriptionController = TextEditingController();
+    final documentUrlController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+    var selectedStatus = 'active';
+    final messenger = ScaffoldMessenger.of(context);
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setState) => AlertDialog(
+            title: const Text('إضافة عقد'),
+            content: Form(
+              key: formKey,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextFormField(
+                      controller: titleController,
+                      decoration: const InputDecoration(
+                        labelText: 'عنوان العقد',
+                        border: OutlineInputBorder(),
+                      ),
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'اكتب عنوان العقد';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: numberController,
+                      decoration: const InputDecoration(
+                        labelText: 'رقم العقد',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<String>(
+                      initialValue: selectedStatus,
+                      decoration: const InputDecoration(
+                        labelText: 'الحالة',
+                        border: OutlineInputBorder(),
+                      ),
+                      items: const [
+                        DropdownMenuItem(value: 'draft', child: Text('مسودة')),
+                        DropdownMenuItem(value: 'active', child: Text('نشط')),
+                        DropdownMenuItem(value: 'signed', child: Text('موقّع')),
+                        DropdownMenuItem(
+                          value: 'completed',
+                          child: Text('مكتمل'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'cancelled',
+                          child: Text('ملغي'),
+                        ),
+                      ],
+                      onChanged: (value) {
+                        if (value == null) return;
+                        setState(() => selectedStatus = value);
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: descriptionController,
+                      minLines: 3,
+                      maxLines: 5,
+                      decoration: const InputDecoration(
+                        labelText: 'وصف أو ملاحظات',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: documentUrlController,
+                      decoration: const InputDecoration(
+                        labelText: 'رابط الملف (اختياري)',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('إلغاء'),
+              ),
+              Consumer<ResponseProvider>(
+                builder: (context, responseProvider, _) {
+                  return ElevatedButton(
+                    onPressed: responseProvider.isSavingContract
+                        ? null
+                        : () async {
+                            if (!formKey.currentState!.validate()) return;
+                            final navigator = Navigator.of(dialogContext);
+                            final token = context.read<AuthProvider>().token;
+                            if (token == null || token.isEmpty) return;
+
+                            try {
+                              await responseProvider
+                                  .addContractToServiceRequest(
+                                    responseId: response.id,
+                                    title: titleController.text.trim(),
+                                    contractNumber: numberController.text
+                                        .trim(),
+                                    status: selectedStatus,
+                                    description: descriptionController.text
+                                        .trim(),
+                                    documentUrl: documentUrlController.text
+                                        .trim(),
+                                    token: token,
+                                  );
+                              await responseProvider.fetchServiceRequests(
+                                token,
+                              );
+                              if (!mounted) return;
+                              navigator.pop();
+                              messenger.showSnackBar(
+                                const SnackBar(
+                                  content: Text('تمت إضافة العقد'),
+                                ),
+                              );
+                            } catch (e) {
+                              messenger.showSnackBar(
+                                SnackBar(content: Text('فشل الإضافة: $e')),
+                              );
+                            }
+                          },
+                    child: Text(
+                      responseProvider.isSavingContract
+                          ? 'جارٍ الحفظ...'
+                          : 'حفظ العقد',
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+
+    titleController.dispose();
+    numberController.dispose();
+    descriptionController.dispose();
+    documentUrlController.dispose();
+  }
+
   Color _statusColor(String status) {
     switch (status) {
       case 'approved':
@@ -221,6 +377,72 @@ class _AdminServiceRequestsScreenState
                                   ),
                                   const SizedBox(height: 12),
                                 ],
+                                if (response.contracts.isNotEmpty) ...[
+                                  const Text(
+                                    'العقود المرتبطة:',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  ...response.contracts.map(
+                                    (contract) => Container(
+                                      width: double.infinity,
+                                      margin: const EdgeInsets.only(bottom: 8),
+                                      padding: const EdgeInsets.all(10),
+                                      decoration: BoxDecoration(
+                                        color: Colors.grey[100],
+                                        borderRadius: BorderRadius.circular(10),
+                                        border: Border.all(
+                                          color: Colors.grey.shade300,
+                                        ),
+                                      ),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            contract.title,
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                          if ((contract.contractNumber ?? '')
+                                              .trim()
+                                              .isNotEmpty)
+                                            Padding(
+                                              padding: const EdgeInsets.only(
+                                                top: 4,
+                                              ),
+                                              child: Text(
+                                                'رقم العقد: ${contract.contractNumber}',
+                                              ),
+                                            ),
+                                          Padding(
+                                            padding: const EdgeInsets.only(
+                                              top: 4,
+                                            ),
+                                            child: Text(
+                                              'الحالة: ${contract.status}',
+                                            ),
+                                          ),
+                                          if ((contract.description ?? '')
+                                              .trim()
+                                              .isNotEmpty)
+                                            Padding(
+                                              padding: const EdgeInsets.only(
+                                                top: 4,
+                                              ),
+                                              child: Text(
+                                                contract.description!.trim(),
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 12),
+                                ],
                                 Wrap(
                                   spacing: 10,
                                   runSpacing: 10,
@@ -245,6 +467,12 @@ class _AdminServiceRequestsScreenState
                                       ),
                                       icon: const Icon(Icons.reply),
                                       label: const Text('Reply'),
+                                    ),
+                                    ElevatedButton.icon(
+                                      onPressed: () =>
+                                          _showAddContractDialog(response),
+                                      icon: const Icon(Icons.note_add_outlined),
+                                      label: const Text('إضافة عقد'),
                                     ),
                                   ],
                                 ),

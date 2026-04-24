@@ -7,7 +7,7 @@ class CompanyInfo {
   static const developerCreditEn = 'Developed by';
 
   // Replace with your official numbers.
-  static const commercialRegister = '0000000000';
+  static const commercialRegister = '3350147040';
   static const taxNumber = '0000000000';
 
   // Replace with your official addresses.

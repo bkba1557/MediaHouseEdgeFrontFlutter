@@ -128,14 +128,38 @@ class _UploadMediaScreenState extends State<UploadMediaScreen> {
       subtitle: 'إنتاج إعلانات بالتعاون مع جهات حكومية',
       icon: Icons.handshake_outlined,
     ),
+    _UploadSection(
+      value: 'artist_contracts',
+      title: 'تعاقدات فنانين',
+      subtitle: 'عقود فنية وحجوزات وتنسيق التعاقدات',
+      icon: Icons.assignment_ind_outlined,
+    ),
+    _UploadSection(
+      value: 'behind_the_scenes',
+      title: 'كواليس التصوير',
+      subtitle: 'محتوى خلف الكاميرا ولحظات ما وراء المشهد',
+      icon: Icons.photo_camera_back_outlined,
+    ),
+    _UploadSection(
+      value: 'dj_booking',
+      title: 'DJ\'s Booking',
+      subtitle: 'حجوزات الدي جي والعروض الموسيقية والفعاليات',
+      icon: Icons.queue_music_outlined,
+    ),
+    _UploadSection(
+      value: 'international_institutions',
+      title: 'أعمال مع مؤسسات دولية',
+      subtitle: 'مشاريع مشتركة ومحتوى مخصص لجهات ومؤسسات دولية',
+      icon: Icons.apartment_outlined,
+    ),
   ];
 
-  _UploadSection get _selectedSection => _sections.firstWhere(
-        (section) => section.value == _selectedCategory,
-      );
+  _UploadSection get _selectedSection =>
+      _sections.firstWhere((section) => section.value == _selectedCategory);
 
   String get _effectiveType => _selectedSection.forcedType ?? _selectedType;
-  bool get _isSeriesMovies => (_selectedSection.uploadCategory ?? _selectedCategory) == 'series_movies';
+  bool get _isSeriesMovies =>
+      (_selectedSection.uploadCategory ?? _selectedCategory) == 'series_movies';
 
   String _toCollectionKey(String value) {
     final trimmed = value.trim().toLowerCase();
@@ -175,9 +199,9 @@ class _UploadMediaScreenState extends State<UploadMediaScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     if (_selectedFile == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('اختر ملف قبل الرفع')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('اختر ملف قبل الرفع')));
       return;
     }
 
@@ -220,9 +244,9 @@ class _UploadMediaScreenState extends State<UploadMediaScreen> {
       );
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تم رفع المحتوى بنجاح')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('تم رفع المحتوى بنجاح')));
 
       _titleController.clear();
       _descriptionController.clear();
@@ -238,9 +262,9 @@ class _UploadMediaScreenState extends State<UploadMediaScreen> {
       });
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('فشل الرفع: $error')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('فشل الرفع: $error')));
     } finally {
       if (mounted) setState(() => _isUploading = false);
     }
@@ -251,33 +275,33 @@ class _UploadMediaScreenState extends State<UploadMediaScreen> {
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
       child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 920),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _FilePickerBox(
-                    selectedFile: _selectedFile,
-                    effectiveType: _effectiveType,
-                    onTap: _pickFile,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 920),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _FilePickerBox(
+                  selectedFile: _selectedFile,
+                  effectiveType: _effectiveType,
+                  onTap: _pickFile,
+                ),
+                const SizedBox(height: 20),
+                TextFormField(
+                  controller: _titleController,
+                  decoration: const InputDecoration(
+                    labelText: 'Title',
+                    border: OutlineInputBorder(),
                   ),
-                  const SizedBox(height: 20),
-                  TextFormField(
-                    controller: _titleController,
-                    decoration: const InputDecoration(
-                      labelText: 'Title',
-                      border: OutlineInputBorder(),
-                    ),
-                    validator: (value) {
-                      if (value == null || value.trim().isEmpty) {
-                        return 'Please enter title';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 16),
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Please enter title';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
                 TextFormField(
                   controller: _descriptionController,
                   decoration: const InputDecoration(
@@ -304,95 +328,95 @@ class _UploadMediaScreenState extends State<UploadMediaScreen> {
                 const SizedBox(height: 16),
                 if (_selectedSection.forcedType == null) ...[
                   DropdownButtonFormField<String>(
-                      initialValue: _selectedType,
-                      decoration: const InputDecoration(
-                        labelText: 'Type',
-                        border: OutlineInputBorder(),
-                      ),
-                      items: _types.map((type) {
-                        return DropdownMenuItem(
-                          value: type,
-                          child: Text(type.toUpperCase()),
-                        );
-                      }).toList(),
-                      onChanged: (value) {
-                        if (value == null) return;
+                    initialValue: _selectedType,
+                    decoration: const InputDecoration(
+                      labelText: 'Type',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: _types.map((type) {
+                      return DropdownMenuItem(
+                        value: type,
+                        child: Text(type.toUpperCase()),
+                      );
+                    }).toList(),
+                    onChanged: (value) {
+                      if (value == null) return;
+                      setState(() {
+                        _selectedType = value;
+                        _selectedFile = null;
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                ],
+                const Text(
+                  'اختر القسم الذي سيظهر للمستخدم',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+                ),
+                const SizedBox(height: 10),
+                ..._sections.map(
+                  (section) => Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: _UploadSectionTile(
+                      section: section,
+                      selected: section.value == _selectedCategory,
+                      onTap: () {
                         setState(() {
-                          _selectedType = value;
+                          _selectedCategory = section.value;
+                          if (section.forcedType != null) {
+                            _selectedType = section.forcedType!;
+                          }
+                          if (section.value != 'series_movies') {
+                            _collectionTitleController.clear();
+                            _sequenceController.clear();
+                          }
                           _selectedFile = null;
                         });
                       },
                     ),
-                    const SizedBox(height: 16),
-                  ],
+                  ),
+                ),
+                _SelectedSectionHint(section: _selectedSection),
+                if (_isSeriesMovies) ...[
+                  const SizedBox(height: 16),
                   const Text(
-                    'اختر القسم الذي سيظهر للمستخدم',
+                    'Folder / Series',
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
                   ),
                   const SizedBox(height: 10),
-                  ..._sections.map(
-                    (section) => Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
-                      child: _UploadSectionTile(
-                        section: section,
-                        selected: section.value == _selectedCategory,
-                        onTap: () {
-                          setState(() {
-                            _selectedCategory = section.value;
-                            if (section.forcedType != null) {
-                              _selectedType = section.forcedType!;
-                            }
-                            if (section.value != 'series_movies') {
-                              _collectionTitleController.clear();
-                              _sequenceController.clear();
-                            }
-                            _selectedFile = null;
-                          });
-                        },
-                      ),
+                  TextFormField(
+                    controller: _collectionTitleController,
+                    decoration: const InputDecoration(
+                      labelText: 'اسم المجلد (اسم المسلسل / الفيلم)',
+                      border: OutlineInputBorder(),
                     ),
+                    validator: (value) {
+                      if (!_isSeriesMovies) return null;
+                      if (value == null || value.trim().isEmpty) {
+                        return 'اكتب اسم المجلد';
+                      }
+                      return null;
+                    },
                   ),
-                _SelectedSectionHint(section: _selectedSection),
-                if (_isSeriesMovies) ...[
-                    const SizedBox(height: 16),
-                    const Text(
-                      'Folder / Series',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _sequenceController,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      labelText: 'الترتيب داخل المجلد (رقم الحلقة/الجزء)',
+                      border: OutlineInputBorder(),
                     ),
-                    const SizedBox(height: 10),
-                    TextFormField(
-                      controller: _collectionTitleController,
-                      decoration: const InputDecoration(
-                        labelText: 'اسم المجلد (اسم المسلسل / الفيلم)',
-                        border: OutlineInputBorder(),
-                      ),
-                      validator: (value) {
-                        if (!_isSeriesMovies) return null;
-                        if (value == null || value.trim().isEmpty) {
-                          return 'اكتب اسم المجلد';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 12),
-                    TextFormField(
-                      controller: _sequenceController,
-                      keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(
-                        labelText: 'الترتيب داخل المجلد (رقم الحلقة/الجزء)',
-                        border: OutlineInputBorder(),
-                      ),
-                      validator: (value) {
-                        if (!_isSeriesMovies) return null;
-                        final text = value?.trim() ?? '';
-                        if (text.isEmpty) return null;
-                        if (int.tryParse(text) == null) {
-                          return 'اكتب رقم صحيح';
-                        }
-                        return null;
-                      },
-                    ),
-                  ],
+                    validator: (value) {
+                      if (!_isSeriesMovies) return null;
+                      final text = value?.trim() ?? '';
+                      if (text.isEmpty) return null;
+                      if (int.tryParse(text) == null) {
+                        return 'اكتب رقم صحيح';
+                      }
+                      return null;
+                    },
+                  ),
+                ],
                 if (_effectiveType == 'video') ...[
                   const SizedBox(height: 18),
                   const Text(
@@ -411,8 +435,9 @@ class _UploadMediaScreenState extends State<UploadMediaScreen> {
                         photoFile: item.photoFile,
                         onPickPhoto: () async {
                           final picker = ImagePicker();
-                          final file =
-                              await picker.pickImage(source: ImageSource.gallery);
+                          final file = await picker.pickImage(
+                            source: ImageSource.gallery,
+                          );
                           if (file == null) return;
                           setState(() => item.photoFile = file);
                         },
@@ -428,26 +453,26 @@ class _UploadMediaScreenState extends State<UploadMediaScreen> {
                 ],
                 const SizedBox(height: 24),
                 SizedBox(
-                    width: double.infinity,
-                    height: 50,
-                    child: ElevatedButton(
-                      onPressed: _isUploading ? null : _upload,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFE50914),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
+                  width: double.infinity,
+                  height: 50,
+                  child: ElevatedButton(
+                    onPressed: _isUploading ? null : _upload,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFE50914),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
                       ),
-                      child: _isUploading
-                          ? const CircularProgressIndicator(color: Colors.white)
-                          : const Text('Upload', style: TextStyle(fontSize: 16)),
                     ),
+                    child: _isUploading
+                        ? const CircularProgressIndicator(color: Colors.white)
+                        : const Text('Upload', style: TextStyle(fontSize: 16)),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ),
+      ),
     );
   }
 
@@ -670,7 +695,10 @@ class _CrewTile extends StatelessWidget {
                     child: photoFile == null
                         ? Container(
                             color: Colors.white.withValues(alpha: 0.06),
-                            child: const Icon(Icons.person, color: Colors.white54),
+                            child: const Icon(
+                              Icons.person,
+                              color: Colors.white54,
+                            ),
                           )
                         : FutureBuilder<Uint8List>(
                             future: photoFile!.readAsBytes(),
@@ -780,7 +808,10 @@ class _UploadSectionTile extends StatelessWidget {
               selected ? Icons.radio_button_checked : Icons.radio_button_off,
               color: selected ? const Color(0xFFE50914) : Colors.white54,
             ),
-            Icon(section.icon, color: selected ? const Color(0xFFE50914) : null),
+            Icon(
+              section.icon,
+              color: selected ? const Color(0xFFE50914) : null,
+            ),
             const SizedBox(width: 10),
             Expanded(
               child: Column(
@@ -796,7 +827,10 @@ class _UploadSectionTile extends StatelessWidget {
               ),
             ),
             if (section.forcedType != null)
-              const Chip(label: Text('VIDEO'), visualDensity: VisualDensity.compact),
+              const Chip(
+                label: Text('VIDEO'),
+                visualDensity: VisualDensity.compact,
+              ),
           ],
         ),
       ),

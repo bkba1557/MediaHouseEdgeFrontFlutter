@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../localization/app_localizations.dart';
 import '../models/media.dart';
 import '../providers/media_provider.dart';
 import '../widgets/app_network_image.dart';
+import '../widgets/auto_play_video_preview.dart';
 import '../widgets/service_request_sheet.dart';
 import 'series_folder_items_screen.dart';
 
@@ -32,7 +34,7 @@ class _SeriesFoldersScreenState extends State<SeriesFoldersScreen> {
     await showServiceRequestSheet(
       context,
       serviceCategory: 'series_movies',
-      serviceTitle: 'مسلسلات وأفلام',
+      serviceTitle: context.tr('مسلسلات وأفلام'),
     );
   }
 
@@ -40,12 +42,12 @@ class _SeriesFoldersScreenState extends State<SeriesFoldersScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('مسلسلات وأفلام'),
+        title: Text(context.tr('مسلسلات وأفلام')),
         actions: [
           TextButton.icon(
             onPressed: _openRequest,
             icon: const Icon(Icons.assignment_outlined),
-            label: const Text('تقديم طلب'),
+            label: Text(context.tr('تقديم طلب')),
           ),
           const SizedBox(width: 6),
         ],
@@ -195,7 +197,40 @@ class _FolderTile extends StatelessWidget {
               fit: StackFit.expand,
               children: [
                 const ColoredBox(color: Colors.black),
-                if (coverUrl != null && coverUrl.trim().isNotEmpty)
+                if (preview?.isVideo == true)
+                  IgnorePointer(
+                    child: AutoPlayVideoPreview(
+                      url: Uri.parse(preview!.url),
+                      fit: BoxFit.cover,
+                      placeholder:
+                          coverUrl != null && coverUrl.trim().isNotEmpty
+                          ? AppNetworkImage(
+                              url: coverUrl,
+                              fit: BoxFit.contain,
+                              placeholder: const ColoredBox(
+                                color: Colors.white10,
+                              ),
+                              errorWidget: const ColoredBox(
+                                color: Colors.white10,
+                              ),
+                            )
+                          : const ColoredBox(color: Colors.white10),
+                      errorWidget:
+                          coverUrl != null && coverUrl.trim().isNotEmpty
+                          ? AppNetworkImage(
+                              url: coverUrl,
+                              fit: BoxFit.contain,
+                              placeholder: const ColoredBox(
+                                color: Colors.white10,
+                              ),
+                              errorWidget: const ColoredBox(
+                                color: Colors.white10,
+                              ),
+                            )
+                          : const ColoredBox(color: Colors.white10),
+                    ),
+                  )
+                else if (coverUrl != null && coverUrl.trim().isNotEmpty)
                   AppNetworkImage(
                     url: coverUrl,
                     fit: BoxFit.contain,
@@ -259,7 +294,7 @@ class _FolderTile extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        '$count عنصر',
+                        context.tr('{count} عنصر', params: {'count': '$count'}),
                         style: const TextStyle(
                           color: Colors.white70,
                           fontSize: 12,
@@ -294,16 +329,19 @@ class _EmptyState extends StatelessWidget {
             children: [
               const Icon(Icons.folder_open, size: 64, color: Colors.white54),
               const SizedBox(height: 12),
-              const Text(
-                'لا توجد مجلدات حالياً',
+              Text(
+                context.tr('لا توجد مجلدات حالياً'),
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
               const SizedBox(height: 14),
               ElevatedButton.icon(
                 onPressed: onRequest,
                 icon: const Icon(Icons.assignment_outlined),
-                label: const Text('تقديم طلب الخدمة'),
+                label: Text(context.tr('تقديم طلب الخدمة')),
               ),
             ],
           ),
@@ -335,10 +373,13 @@ class _ErrorState extends StatelessWidget {
                 color: Colors.white54,
               ),
               const SizedBox(height: 12),
-              const Text(
-                'حصل خطأ أثناء تحميل المحتوى',
+              Text(
+                context.tr('حصل خطأ أثناء تحميل المحتوى'),
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
               const SizedBox(height: 8),
               Text(
@@ -350,7 +391,7 @@ class _ErrorState extends StatelessWidget {
               ElevatedButton.icon(
                 onPressed: onRetry,
                 icon: const Icon(Icons.refresh),
-                label: const Text('إعادة المحاولة'),
+                label: Text(context.tr('إعادة المحاولة')),
               ),
             ],
           ),

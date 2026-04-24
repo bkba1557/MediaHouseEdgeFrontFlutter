@@ -230,9 +230,12 @@ Future<void> showServiceRequestSheet(
                           ),
                           validator: (value) {
                             final text = value?.trim() ?? '';
-                            if (text.isEmpty) return _ArText.emailRequired;
-                            if (!text.contains('@'))
+                            if (text.isEmpty) {
+                              return _ArText.emailRequired;
+                            }
+                            if (!text.contains('@')) {
                               return _ArText.emailInvalid;
+                            }
                             return null;
                           },
                         ),
@@ -243,7 +246,7 @@ Future<void> showServiceRequestSheet(
                             SizedBox(
                               width: isNarrow ? 128 : 168,
                               child: DropdownButtonFormField<_PhoneCountry>(
-                                value: selectedCountry,
+                                initialValue: selectedCountry,
                                 decoration: const InputDecoration(
                                   labelText: _ArText.countryLabel,
                                   border: OutlineInputBorder(),
@@ -261,7 +264,9 @@ Future<void> showServiceRequestSheet(
                                     )
                                     .toList(growable: false),
                                 onChanged: (value) {
-                                  if (value == null) return;
+                                  if (value == null) {
+                                    return;
+                                  }
                                   setState(() => selectedCountry = value);
                                 },
                               ),
@@ -283,8 +288,9 @@ Future<void> showServiceRequestSheet(
                                 ),
                                 validator: (value) {
                                   final text = value?.trim() ?? '';
-                                  if (text.isEmpty)
+                                  if (text.isEmpty) {
                                     return _ArText.phoneRequired;
+                                  }
                                   if (text.length < 7 || text.length > 15) {
                                     return _ArText.phoneInvalid;
                                   }
@@ -325,6 +331,11 @@ Future<void> showServiceRequestSheet(
                                       final messenger = ScaffoldMessenger.of(
                                         context,
                                       );
+                                      final authProvider =
+                                          Provider.of<AuthProvider>(
+                                            context,
+                                            listen: false,
+                                          );
                                       try {
                                         await Provider.of<ResponseProvider>(
                                           context,
@@ -345,6 +356,7 @@ Future<void> showServiceRequestSheet(
                                               .trim(),
                                           message: messageController.text
                                               .trim(),
+                                          token: authProvider.token,
                                         );
                                         navigator.pop();
                                         messenger.showSnackBar(

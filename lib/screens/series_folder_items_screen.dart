@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../localization/app_localizations.dart';
 import '../models/media.dart';
 import '../providers/media_provider.dart';
 import '../widgets/app_network_image.dart';
+import '../widgets/auto_play_video_preview.dart';
 import '../widgets/service_request_sheet.dart';
 import 'image_viewer_screen.dart';
 import 'video_player_screen.dart';
@@ -45,7 +47,7 @@ class _SeriesFolderItemsScreenState extends State<SeriesFolderItemsScreen> {
     await showServiceRequestSheet(
       context,
       serviceCategory: 'series_movies',
-      serviceTitle: 'مسلسلات وأفلام',
+      serviceTitle: context.tr('مسلسلات وأفلام'),
     );
   }
 
@@ -88,7 +90,7 @@ class _SeriesFolderItemsScreenState extends State<SeriesFolderItemsScreen> {
           TextButton.icon(
             onPressed: _openRequest,
             icon: const Icon(Icons.assignment_outlined),
-            label: const Text('تقديم طلب'),
+            label: Text(context.tr('تقديم طلب')),
           ),
           const SizedBox(width: 6),
         ],
@@ -122,20 +124,20 @@ class _SeriesFolderItemsScreenState extends State<SeriesFolderItemsScreen> {
 
                 final folderItems = _folderItems(mediaProvider.mediaList);
                 if (folderItems.isEmpty) {
-                  return const Center(
+                  return Center(
                     child: Text(
-                      'لا توجد عناصر في هذا المجلد',
-                      style: TextStyle(color: Colors.white70),
+                      context.tr('لا توجد عناصر في هذا المجلد'),
+                      style: const TextStyle(color: Colors.white70),
                     ),
                   );
                 }
 
                 final items = _applyFilter(folderItems);
                 if (items.isEmpty) {
-                  return const Center(
+                  return Center(
                     child: Text(
-                      'لا يوجد محتوى لهذا الفلتر',
-                      style: TextStyle(color: Colors.white70),
+                      context.tr('لا يوجد محتوى لهذا الفلتر'),
+                      style: const TextStyle(color: Colors.white70),
                     ),
                   );
                 }
@@ -190,7 +192,7 @@ class _SeriesFolderItemsScreenState extends State<SeriesFolderItemsScreen> {
                                 builder: (_) => VideoPlayerScreen(
                                   media: media,
                                   playlist: playlist,
-                                  playlistTitle: 'الحلقات',
+                                  playlistTitle: context.tr('الحلقات'),
                                 ),
                               ),
                             );
@@ -243,9 +245,13 @@ class _FiltersBar extends StatelessWidget {
       spacing: 10,
       runSpacing: 10,
       children: [
-        chip(_FolderFilter.all, 'الكل', Icons.grid_view_outlined),
-        chip(_FolderFilter.images, 'صور', Icons.image_outlined),
-        chip(_FolderFilter.videos, 'فيديو', Icons.play_circle_outline),
+        chip(_FolderFilter.all, context.tr('الكل'), Icons.grid_view_outlined),
+        chip(_FolderFilter.images, context.tr('صور'), Icons.image_outlined),
+        chip(
+          _FolderFilter.videos,
+          context.tr('فيديو'),
+          Icons.play_circle_outline,
+        ),
       ],
     );
   }
@@ -289,7 +295,38 @@ class _EpisodeCard extends StatelessWidget {
               fit: StackFit.expand,
               children: [
                 const ColoredBox(color: Colors.black),
-                if (thumb.isNotEmpty)
+                if (media.isVideo)
+                  IgnorePointer(
+                    child: AutoPlayVideoPreview(
+                      url: Uri.parse(media.url),
+                      fit: BoxFit.cover,
+                      placeholder: thumb.isNotEmpty
+                          ? AppNetworkImage(
+                              url: thumb,
+                              fit: BoxFit.contain,
+                              placeholder: const ColoredBox(
+                                color: Colors.white10,
+                              ),
+                              errorWidget: const ColoredBox(
+                                color: Colors.white10,
+                              ),
+                            )
+                          : const ColoredBox(color: Colors.white10),
+                      errorWidget: thumb.isNotEmpty
+                          ? AppNetworkImage(
+                              url: thumb,
+                              fit: BoxFit.contain,
+                              placeholder: const ColoredBox(
+                                color: Colors.white10,
+                              ),
+                              errorWidget: const ColoredBox(
+                                color: Colors.white10,
+                              ),
+                            )
+                          : const ColoredBox(color: Colors.white10),
+                    ),
+                  )
+                else if (thumb.isNotEmpty)
                   AppNetworkImage(
                     url: thumb,
                     fit: BoxFit.contain,
@@ -427,10 +464,13 @@ class _ErrorState extends StatelessWidget {
                 color: Colors.white54,
               ),
               const SizedBox(height: 12),
-              const Text(
-                'حصل خطأ أثناء تحميل المحتوى',
+              Text(
+                context.tr('حصل خطأ أثناء تحميل المحتوى'),
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
               const SizedBox(height: 8),
               Text(
@@ -442,7 +482,7 @@ class _ErrorState extends StatelessWidget {
               ElevatedButton.icon(
                 onPressed: onRetry,
                 icon: const Icon(Icons.refresh),
-                label: const Text('إعادة المحاولة'),
+                label: Text(context.tr('إعادة المحاولة')),
               ),
             ],
           ),
