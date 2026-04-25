@@ -12,6 +12,18 @@ class AppFirebaseOptions {
     'FIREBASE_APP_ID',
     defaultValue: '1:843078322062:web:13eeda6eeb3e36dcb686df',
   );
+  static const webAppId = String.fromEnvironment(
+    'FIREBASE_WEB_APP_ID',
+    defaultValue: appId,
+  );
+  static const androidAppId = String.fromEnvironment(
+    'FIREBASE_ANDROID_APP_ID',
+    defaultValue: appId,
+  );
+  static const iosAppId = String.fromEnvironment(
+    'FIREBASE_IOS_APP_ID',
+    defaultValue: appId,
+  );
   static const messagingSenderId = String.fromEnvironment(
     'FIREBASE_MESSAGING_SENDER_ID',
     defaultValue: '843078322062',
@@ -33,10 +45,11 @@ class AppFirebaseOptions {
     defaultValue: 'G-PXKW92DMB2',
   );
   static const iosBundleId = String.fromEnvironment('FIREBASE_IOS_BUNDLE_ID');
+  static const webVapidKey = String.fromEnvironment('FIREBASE_WEB_VAPID_KEY');
 
   static bool get isConfigured {
     return apiKey.isNotEmpty &&
-        appId.isNotEmpty &&
+        webAppId.isNotEmpty &&
         messagingSenderId.isNotEmpty &&
         projectId.isNotEmpty &&
         storageBucket.isNotEmpty;
@@ -52,9 +65,9 @@ class AppFirebaseOptions {
     }
 
     if (kIsWeb) {
-      return FirebaseOptions(
+      return const FirebaseOptions(
         apiKey: apiKey,
-        appId: appId,
+        appId: webAppId,
         messagingSenderId: messagingSenderId,
         projectId: projectId,
         storageBucket: storageBucket,
@@ -65,7 +78,9 @@ class AppFirebaseOptions {
 
     return FirebaseOptions(
       apiKey: apiKey,
-      appId: appId,
+      appId: defaultTargetPlatform == TargetPlatform.iOS
+          ? iosAppId
+          : androidAppId,
       messagingSenderId: messagingSenderId,
       projectId: projectId,
       storageBucket: storageBucket,

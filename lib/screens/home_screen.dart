@@ -13,6 +13,7 @@ import '../providers/auth_provider.dart';
 import '../providers/about_provider.dart';
 import '../providers/locale_provider.dart';
 import '../providers/media_provider.dart';
+import '../providers/notification_provider.dart';
 import '../providers/response_provider.dart';
 import '../providers/team_provider.dart';
 import '../config/company_info.dart';
@@ -665,99 +666,122 @@ class _HomeScreenState extends State<HomeScreen>
 
     await showModalBottomSheet<void>(
       context: context,
+      isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (sheetContext) {
+        final maxSheetHeight = MediaQuery.sizeOf(sheetContext).height * 0.78;
+
         return _GlassPanel(
           margin: const EdgeInsets.all(16),
           padding: const EdgeInsets.all(16),
           child: SafeArea(
             top: false,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  sheetContext.tr('لغة التطبيق'),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
+            child: SizedBox(
+              height: maxSheetHeight,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    sheetContext.tr('لغة التطبيق'),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  sheetContext.tr('اختر لغة الواجهة'),
-                  style: const TextStyle(color: Colors.white70),
-                ),
-                const SizedBox(height: 14),
-                ...AppLocalizations.languageOptions.map((option) {
-                  final selected = option.locale.languageCode == currentCode;
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(12),
-                      onTap: () async {
-                        await localeProvider.setLocale(option.locale);
-                        if (sheetContext.mounted) {
-                          Navigator.pop(sheetContext);
-                        }
-                      },
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 180),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 12,
-                        ),
-                        decoration: BoxDecoration(
-                          color: selected
-                              ? const Color(0xFFE50914).withValues(alpha: 0.18)
-                              : Colors.white.withValues(alpha: 0.04),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: selected
-                                ? const Color(0xFFE50914)
-                                : Colors.white.withValues(alpha: 0.08),
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              selected
-                                  ? Icons.check_circle_rounded
-                                  : Icons.language_rounded,
-                              color: selected
-                                  ? const Color(0xFFE50914)
-                                  : Colors.white70,
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    option.nativeName,
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w700,
+                  const SizedBox(height: 6),
+                  Text(
+                    sheetContext.tr('اختر لغة الواجهة'),
+                    style: const TextStyle(color: Colors.white70),
+                  ),
+                  const SizedBox(height: 14),
+                  Expanded(
+                    child: Scrollbar(
+                      thumbVisibility: true,
+                      child: SingleChildScrollView(
+                        physics: const BouncingScrollPhysics(),
+                        child: Column(
+                          children: AppLocalizations.languageOptions.map((
+                            option,
+                          ) {
+                            final selected =
+                                option.locale.languageCode == currentCode;
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 8),
+                              child: InkWell(
+                                borderRadius: BorderRadius.circular(12),
+                                onTap: () async {
+                                  await localeProvider.setLocale(option.locale);
+                                  if (sheetContext.mounted) {
+                                    Navigator.pop(sheetContext);
+                                  }
+                                },
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 180),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 14,
+                                    vertical: 12,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: selected
+                                        ? const Color(
+                                            0xFFE50914,
+                                          ).withValues(alpha: 0.18)
+                                        : Colors.white.withValues(alpha: 0.04),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: selected
+                                          ? const Color(0xFFE50914)
+                                          : Colors.white.withValues(
+                                              alpha: 0.08,
+                                            ),
                                     ),
                                   ),
-                                  Text(
-                                    option.englishName,
-                                    style: const TextStyle(
-                                      color: Colors.white60,
-                                      fontSize: 12,
-                                    ),
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        selected
+                                            ? Icons.check_circle_rounded
+                                            : Icons.language_rounded,
+                                        color: selected
+                                            ? const Color(0xFFE50914)
+                                            : Colors.white70,
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              option.nativeName,
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.w700,
+                                              ),
+                                            ),
+                                            Text(
+                                              option.englishName,
+                                              style: const TextStyle(
+                                                color: Colors.white60,
+                                                fontSize: 12,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                ],
+                                ),
                               ),
-                            ),
-                          ],
+                            );
+                          }).toList(),
                         ),
                       ),
                     ),
-                  );
-                }),
-              ],
+                  ),
+                ],
+              ),
             ),
           ),
         );
@@ -798,6 +822,13 @@ class _HomeScreenState extends State<HomeScreen>
                     style: const TextStyle(color: Colors.white70),
                   ),
                 ),
+                if (user != null && !user.isGuest) ...[
+                  const SizedBox(height: 8),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: _AccountTierChip(label: user.tierLabel),
+                  ),
+                ],
                 const SizedBox(height: 12),
                 if (user != null && !user.isGuest) ...[
                   SizedBox(
@@ -951,6 +982,7 @@ class _HomeScreenState extends State<HomeScreen>
     final screenWidth = MediaQuery.sizeOf(context).width;
     final isWideWeb = kIsWeb && screenWidth >= 720;
     final localeCode = context.watch<LocaleProvider>().locale.languageCode;
+    final unreadCount = context.watch<NotificationProvider>().unreadCount;
     final toolbarHeight = isWideWeb ? 78.0 : 66.0;
     final logoBadgeSize = isWideWeb ? 62.0 : 52.0;
     final logoPadding = isWideWeb ? 2.0 : 3.0;
@@ -1045,6 +1077,14 @@ class _HomeScreenState extends State<HomeScreen>
           isActive: _themeMode != _HomeThemeMode.dark,
           onPressed: _cycleThemeMode,
         ),
+        if (authProvider.isAuthenticated &&
+            !(authProvider.user?.isGuest ?? true))
+          _AppIconButton(
+            icon: Icons.notifications_none_rounded,
+            tooltip: 'Notifications',
+            badgeCount: unreadCount,
+            onPressed: () => Navigator.pushNamed(context, '/notifications'),
+          ),
         if (authProvider.isAdmin)
           _AppIconButton(
             icon: Icons.dashboard_customize_outlined,
@@ -2519,12 +2559,14 @@ class _AppIconButton extends StatelessWidget {
   final String tooltip;
   final VoidCallback onPressed;
   final bool isActive;
+  final int badgeCount;
 
   const _AppIconButton({
     required this.icon,
     required this.tooltip,
     required this.onPressed,
     this.isActive = false,
+    this.badgeCount = 0,
   });
 
   @override
@@ -2564,14 +2606,84 @@ class _AppIconButton extends StatelessWidget {
                   ),
                 ],
               ),
-              child: Icon(
-                icon,
-                color: isActive ? const Color(0xFFE50914) : foreground,
-                size: 20,
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Positioned.fill(
+                    child: Center(
+                      child: Icon(
+                        icon,
+                        color: isActive ? const Color(0xFFE50914) : foreground,
+                        size: 20,
+                      ),
+                    ),
+                  ),
+                  if (badgeCount > 0)
+                    Positioned(
+                      top: -4,
+                      right: -4,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 5,
+                          vertical: 2,
+                        ),
+                        constraints: const BoxConstraints(minWidth: 18),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE50914),
+                          borderRadius: BorderRadius.circular(999),
+                          border: Border.all(color: Colors.black, width: 1),
+                        ),
+                        child: Text(
+                          badgeCount > 99 ? '99+' : '$badgeCount',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
               ),
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _AccountTierChip extends StatelessWidget {
+  final String label;
+
+  const _AccountTierChip({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    final (color, icon) = switch (label) {
+      'VIP' => (Colors.amberAccent, Icons.workspace_premium_outlined),
+      'Key Account' => (Colors.lightBlueAccent, Icons.business_center_outlined),
+      _ => (Colors.white70, Icons.verified_user_outlined),
+    };
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: color.withValues(alpha: 0.26)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: color),
+          const SizedBox(width: 8),
+          Text(
+            label,
+            style: TextStyle(color: color, fontWeight: FontWeight.w700),
+          ),
+        ],
       ),
     );
   }

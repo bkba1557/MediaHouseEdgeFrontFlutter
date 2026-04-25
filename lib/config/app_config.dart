@@ -31,6 +31,16 @@ class AppConfig {
     return normalized;
   }
 
+  static const String googleClientId = String.fromEnvironment(
+    'GOOGLE_CLIENT_ID',
+    defaultValue: '',
+  );
+
+  static const String googleServerClientId = String.fromEnvironment(
+    'GOOGLE_SERVER_CLIENT_ID',
+    defaultValue: '',
+  );
+
   static String _normalize(String value) {
     if (value.endsWith('/')) {
       return value.substring(0, value.length - 1);

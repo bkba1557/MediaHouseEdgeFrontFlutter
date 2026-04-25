@@ -73,6 +73,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
             _AccountHeader(
               name: user.username,
               email: user.email,
+              customerTier: user.customerTier,
               requestsCount: requests.length,
               contractsCount: contracts.length,
             ),
@@ -106,12 +107,14 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
 class _AccountHeader extends StatelessWidget {
   final String name;
   final String email;
+  final String customerTier;
   final int requestsCount;
   final int contractsCount;
 
   const _AccountHeader({
     required this.name,
     required this.email,
+    required this.customerTier,
     required this.requestsCount,
     required this.contractsCount,
   });
@@ -166,6 +169,8 @@ class _AccountHeader extends StatelessWidget {
                         email,
                         style: const TextStyle(color: Colors.white70),
                       ),
+                    const SizedBox(height: 10),
+                    _CustomerTierBadge(customerTier: customerTier),
                   ],
                 ),
               ),
@@ -188,6 +193,49 @@ class _AccountHeader extends StatelessWidget {
                 ),
               ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CustomerTierBadge extends StatelessWidget {
+  final String customerTier;
+
+  const _CustomerTierBadge({required this.customerTier});
+
+  @override
+  Widget build(BuildContext context) {
+    final (label, color, icon) = switch (customerTier) {
+      'vip' => (
+        'VIP Client',
+        Colors.amberAccent,
+        Icons.workspace_premium_outlined,
+      ),
+      'key_account' => (
+        'Key Account',
+        Colors.lightBlueAccent,
+        Icons.business_center_outlined,
+      ),
+      _ => ('Regular Client', Colors.white70, Icons.verified_user_outlined),
+    };
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: color.withValues(alpha: 0.26)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: color),
+          const SizedBox(width: 8),
+          Text(
+            label,
+            style: TextStyle(color: color, fontWeight: FontWeight.w700),
           ),
         ],
       ),

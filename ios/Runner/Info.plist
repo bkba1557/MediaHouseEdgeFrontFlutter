@@ -30,6 +30,10 @@
 	<string>Microphone access is used only when you choose to record video with sound for media uploads.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Photo library access lets you choose images and videos to upload media, portfolio items, and profile content.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+	</array>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>

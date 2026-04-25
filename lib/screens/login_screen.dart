@@ -1,9 +1,13 @@
+import 'dart:math' as math;
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'dart:math' as math;
 
 import '../localization/app_localizations.dart';
 import '../providers/auth_provider.dart';
+
+enum _LoginMethod { password, emailOtp }
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -26,9 +30,34 @@ class _LoginScreenState extends State<LoginScreen> {
 
   bool _isLogin = true;
   bool _isAwaitingOtp = false;
+  _LoginMethod _loginMethod = _LoginMethod.password;
+
+  bool get _showsPasswordField =>
+      !_isAwaitingOtp && (!_isLogin || _loginMethod == _LoginMethod.password);
+
+  bool get _supportsGoogle =>
+      kIsWeb ||
+      defaultTargetPlatform == TargetPlatform.android ||
+      defaultTargetPlatform == TargetPlatform.iOS ||
+      defaultTargetPlatform == TargetPlatform.macOS;
+
+  bool get _supportsApple =>
+      kIsWeb ||
+      defaultTargetPlatform == TargetPlatform.android ||
+      defaultTargetPlatform == TargetPlatform.iOS ||
+      defaultTargetPlatform == TargetPlatform.macOS;
+
+  String _localizedPair(
+    BuildContext context, {
+    required String ar,
+    required String en,
+  }) {
+    final languageCode = Localizations.localeOf(context).languageCode;
+    return languageCode == 'ar' ? ar : en;
+  }
 
   void _submitFromKeyboard() {
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final authProvider = context.read<AuthProvider>();
     if (authProvider.isLoading) return;
     _submit();
   }
@@ -38,34 +67,96 @@ class _LoginScreenState extends State<LoginScreen> {
 
     if (_isAwaitingOtp) {
       await _verifyOtp();
-    } else {
-      await _requestOtp();
+      return;
     }
+
+    if (_isLogin) {
+      if (_loginMethod == _LoginMethod.password) {
+        await _loginWithPassword();
+      } else {
+        await _requestLoginOtp();
+      }
+      return;
+    }
+
+    await _requestRegisterOtp();
   }
 
-  Future<void> _requestOtp() async {
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+  Future<void> _loginWithPassword() async {
+    final authProvider = context.read<AuthProvider>();
+    final navigator = Navigator.of(context);
     final messenger = ScaffoldMessenger.of(context);
 
     try {
-      if (_isLogin) {
-        await authProvider.login(
-          _emailController.text.trim(),
-          _passwordController.text,
-        );
+      await authProvider.loginWithPassword(
+        _emailController.text.trim(),
+        _passwordController.text,
+      );
+
+      if (!mounted) return;
+      if (navigator.canPop()) {
+        navigator.pop();
       } else {
-        await authProvider.register(
-          _usernameController.text.trim(),
-          _emailController.text.trim(),
-          _passwordController.text,
-        );
+        navigator.pushReplacementNamed('/home');
       }
+    } catch (e) {
+      if (!mounted) return;
+      messenger.showSnackBar(SnackBar(content: Text(e.toString())));
+    }
+  }
+
+  Future<void> _requestLoginOtp() async {
+    final authProvider = context.read<AuthProvider>();
+    final messenger = ScaffoldMessenger.of(context);
+
+    try {
+      await authProvider.requestLoginOtp(_emailController.text.trim());
+
+      if (!mounted) return;
+      setState(() => _isAwaitingOtp = true);
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            _localizedPair(
+              context,
+              ar: 'تم إرسال رمز الدخول إلى بريدك الإلكتروني',
+              en: 'A login code was sent to your email',
+            ),
+          ),
+        ),
+      );
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          FocusScope.of(context).requestFocus(_otpFocus);
+        }
+      });
+    } catch (e) {
+      if (!mounted) return;
+      messenger.showSnackBar(SnackBar(content: Text(e.toString())));
+    }
+  }
+
+  Future<void> _requestRegisterOtp() async {
+    final authProvider = context.read<AuthProvider>();
+    final messenger = ScaffoldMessenger.of(context);
+
+    try {
+      await authProvider.register(
+        _usernameController.text.trim(),
+        _emailController.text.trim(),
+        _passwordController.text,
+      );
 
       if (!mounted) return;
       setState(() => _isAwaitingOtp = true);
       messenger.showSnackBar(
         SnackBar(content: Text(context.tr('تم إرسال رمز التحقق إلى البريد'))),
       );
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          FocusScope.of(context).requestFocus(_otpFocus);
+        }
+      });
     } catch (e) {
       if (!mounted) return;
       messenger.showSnackBar(SnackBar(content: Text(e.toString())));
@@ -73,7 +164,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _verifyOtp() async {
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final authProvider = context.read<AuthProvider>();
     final navigator = Navigator.of(context);
     final messenger = ScaffoldMessenger.of(context);
 
@@ -102,8 +193,46 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  Future<void> _signInWithGoogle() async {
+    final authProvider = context.read<AuthProvider>();
+    final navigator = Navigator.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+
+    try {
+      await authProvider.signInWithGoogle();
+      if (!mounted) return;
+      if (navigator.canPop()) {
+        navigator.pop();
+      } else {
+        navigator.pushReplacementNamed('/home');
+      }
+    } catch (e) {
+      if (!mounted) return;
+      messenger.showSnackBar(SnackBar(content: Text(e.toString())));
+    }
+  }
+
+  Future<void> _signInWithApple() async {
+    final authProvider = context.read<AuthProvider>();
+    final navigator = Navigator.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+
+    try {
+      await authProvider.signInWithApple();
+      if (!mounted) return;
+      if (navigator.canPop()) {
+        navigator.pop();
+      } else {
+        navigator.pushReplacementNamed('/home');
+      }
+    } catch (e) {
+      if (!mounted) return;
+      messenger.showSnackBar(SnackBar(content: Text(e.toString())));
+    }
+  }
+
   Future<void> _guestLogin() async {
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final authProvider = context.read<AuthProvider>();
     final navigator = Navigator.of(context);
     final messenger = ScaffoldMessenger.of(context);
 
@@ -124,16 +253,96 @@ class _LoginScreenState extends State<LoginScreen> {
   void _toggleMode() {
     setState(() {
       _isLogin = !_isLogin;
-      _isAwaitingOtp = false;
-      _otpController.clear();
+      _resetOtpState();
     });
   }
 
   void _editEmail() {
+    setState(_resetOtpState);
+  }
+
+  void _selectLoginMethod(_LoginMethod method) {
+    if (_loginMethod == method) return;
     setState(() {
-      _isAwaitingOtp = false;
-      _otpController.clear();
+      _loginMethod = method;
+      _resetOtpState();
     });
+  }
+
+  void _resetOtpState() {
+    _isAwaitingOtp = false;
+    _otpController.clear();
+  }
+
+  String _subtitleText(BuildContext context) {
+    if (_isAwaitingOtp) {
+      return context.tr(
+        'أرسلنا كود مكون من 6 أرقام إلى {email}',
+        params: {'email': _emailController.text.trim()},
+      );
+    }
+
+    if (!_isLogin) {
+      return context.tr('استخدم البريد وكلمة المرور، ثم أكد الرمز من الإيميل');
+    }
+
+    if (_loginMethod == _LoginMethod.password) {
+      return _localizedPair(
+        context,
+        ar: 'استخدم البريد الإلكتروني وكلمة المرور للدخول مباشرة بدون رمز تحقق.',
+        en: 'Use your email and password to sign in directly without a verification code.',
+      );
+    }
+
+    return _localizedPair(
+      context,
+      ar: 'اكتب بريدك الإلكتروني فقط وسنرسل لك رمز دخول مكونًا من 6 أرقام.',
+      en: 'Enter your email only and we will send you a 6-digit login code.',
+    );
+  }
+
+  String _submitLabel(BuildContext context) {
+    if (_isAwaitingOtp) {
+      return context.tr('تأكيد الرمز');
+    }
+
+    if (!_isLogin) {
+      return context.tr('إرسال رمز التسجيل');
+    }
+
+    if (_loginMethod == _LoginMethod.password) {
+      return _localizedPair(
+        context,
+        ar: 'الدخول بكلمة المرور',
+        en: 'Sign In with Password',
+      );
+    }
+
+    return context.tr('إرسال رمز الدخول');
+  }
+
+  String _socialDividerLabel(BuildContext context) {
+    return _localizedPair(
+      context,
+      ar: 'أو أكمل بواسطة',
+      en: 'Or continue with',
+    );
+  }
+
+  String _socialHintLabel(BuildContext context) {
+    if (_isLogin) {
+      return _localizedPair(
+        context,
+        ar: 'دخول سريع باستخدام حسابك المرتبط',
+        en: 'Fast access using your linked account',
+      );
+    }
+
+    return _localizedPair(
+      context,
+      ar: 'يمكنك إنشاء الحساب والمتابعة مباشرة',
+      en: 'Create your account and continue instantly',
+    );
   }
 
   @override
@@ -198,18 +407,56 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        _isAwaitingOtp
-                            ? context.tr(
-                                'أرسلنا كود مكون من 6 أرقام إلى {email}',
-                                params: {'email': _emailController.text.trim()},
-                              )
-                            : context.tr(
-                                'استخدم البريد وكلمة المرور، ثم أكد الرمز من الإيميل',
-                              ),
+                        _subtitleText(context),
                         textAlign: TextAlign.center,
                         style: const TextStyle(color: Colors.white70),
                       ),
                       const SizedBox(height: 24),
+                      if (_isLogin && !_isAwaitingOtp) ...[
+                        Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.06),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.08),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: _LoginMethodButton(
+                                  icon: Icons.lock_outline,
+                                  label: _localizedPair(
+                                    context,
+                                    ar: 'كلمة المرور',
+                                    en: 'Password',
+                                  ),
+                                  isSelected:
+                                      _loginMethod == _LoginMethod.password,
+                                  onPressed: () =>
+                                      _selectLoginMethod(_LoginMethod.password),
+                                ),
+                              ),
+                              Expanded(
+                                child: _LoginMethodButton(
+                                  icon: Icons.email_outlined,
+                                  label: _localizedPair(
+                                    context,
+                                    ar: 'رمز عبر البريد',
+                                    en: 'Email Code',
+                                  ),
+                                  isSelected:
+                                      _loginMethod == _LoginMethod.emailOtp,
+                                  onPressed: () =>
+                                      _selectLoginMethod(_LoginMethod.emailOtp),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 18),
+                      ],
                       Form(
                         key: _formKey,
                         child: Column(
@@ -243,10 +490,18 @@ class _LoginScreenState extends State<LoginScreen> {
                                 icon: Icons.email_outlined,
                                 keyboardType: TextInputType.emailAddress,
                                 focusNode: _emailFocus,
-                                textInputAction: TextInputAction.next,
-                                onSubmitted: (_) => FocusScope.of(
-                                  context,
-                                ).requestFocus(_passwordFocus),
+                                textInputAction: _showsPasswordField
+                                    ? TextInputAction.next
+                                    : TextInputAction.done,
+                                onSubmitted: (_) {
+                                  if (_showsPasswordField) {
+                                    FocusScope.of(
+                                      context,
+                                    ).requestFocus(_passwordFocus);
+                                  } else {
+                                    _submitFromKeyboard();
+                                  }
+                                },
                                 validator: (value) {
                                   if (value == null || !value.contains('@')) {
                                     return context.tr('اكتب بريد صحيح');
@@ -254,24 +509,26 @@ class _LoginScreenState extends State<LoginScreen> {
                                   return null;
                                 },
                               ),
-                              const SizedBox(height: 14),
-                              _AuthTextField(
-                                controller: _passwordController,
-                                label: context.tr('كلمة المرور'),
-                                icon: Icons.lock_outline,
-                                obscureText: true,
-                                focusNode: _passwordFocus,
-                                textInputAction: TextInputAction.done,
-                                onSubmitted: (_) => _submitFromKeyboard(),
-                                validator: (value) {
-                                  if (value == null || value.length < 6) {
-                                    return context.tr(
-                                      'كلمة المرور لا تقل عن 6 أحرف',
-                                    );
-                                  }
-                                  return null;
-                                },
-                              ),
+                              if (_showsPasswordField) ...[
+                                const SizedBox(height: 14),
+                                _AuthTextField(
+                                  controller: _passwordController,
+                                  label: context.tr('كلمة المرور'),
+                                  icon: Icons.lock_outline,
+                                  obscureText: true,
+                                  focusNode: _passwordFocus,
+                                  textInputAction: TextInputAction.done,
+                                  onSubmitted: (_) => _submitFromKeyboard(),
+                                  validator: (value) {
+                                    if (value == null || value.length < 6) {
+                                      return context.tr(
+                                        'كلمة المرور لا تقل عن 6 أحرف',
+                                      );
+                                    }
+                                    return null;
+                                  },
+                                ),
+                              ],
                             ] else ...[
                               _AuthTextField(
                                 controller: _otpController,
@@ -331,16 +588,62 @@ class _LoginScreenState extends State<LoginScreen> {
                                             color: Colors.white,
                                           ),
                                         )
-                                      : Text(
-                                          _isAwaitingOtp
-                                              ? context.tr('تأكيد الرمز')
-                                              : _isLogin
-                                              ? context.tr('إرسال رمز الدخول')
-                                              : context.tr('إرسال رمز التسجيل'),
-                                        ),
+                                      : Text(_submitLabel(context)),
                                 ),
                               ),
                               if (!_isAwaitingOtp) ...[
+                                const SizedBox(height: 18),
+                                _AuthDivider(
+                                  label: _socialDividerLabel(context),
+                                ),
+                                const SizedBox(height: 12),
+                                Text(
+                                  _socialHintLabel(context),
+                                  style: const TextStyle(
+                                    color: Colors.white54,
+                                    fontSize: 12,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                                const SizedBox(height: 14),
+                                Wrap(
+                                  spacing: 12,
+                                  runSpacing: 12,
+                                  children: [
+                                    if (_supportsGoogle)
+                                      SizedBox(
+                                        width: isMobile ? double.infinity : 220,
+                                        child: _SocialAuthButton(
+                                          assetPath:
+                                              'assets/images/login_google.png',
+                                          label: _localizedPair(
+                                            context,
+                                            ar: 'المتابعة عبر Google',
+                                            en: 'Continue with Google',
+                                          ),
+                                          onPressed: authProvider.isLoading
+                                              ? null
+                                              : _signInWithGoogle,
+                                        ),
+                                      ),
+                                    if (_supportsApple)
+                                      SizedBox(
+                                        width: isMobile ? double.infinity : 220,
+                                        child: _SocialAuthButton(
+                                          assetPath:
+                                              'assets/images/login_apple.png',
+                                          label: _localizedPair(
+                                            context,
+                                            ar: 'المتابعة عبر Apple',
+                                            en: 'Continue with Apple',
+                                          ),
+                                          onPressed: authProvider.isLoading
+                                              ? null
+                                              : _signInWithApple,
+                                        ),
+                                      ),
+                                  ],
+                                ),
                                 const SizedBox(height: 12),
                                 SizedBox(
                                   width: double.infinity,
@@ -397,6 +700,184 @@ class _LoginScreenState extends State<LoginScreen> {
     _passwordFocus.dispose();
     _otpFocus.dispose();
     super.dispose();
+  }
+}
+
+class _LoginMethodButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final bool isSelected;
+  final VoidCallback onPressed;
+
+  const _LoginMethodButton({
+    required this.icon,
+    required this.label,
+    required this.isSelected,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return TextButton(
+      onPressed: onPressed,
+      style: TextButton.styleFrom(
+        foregroundColor: isSelected ? Colors.white : Colors.white70,
+        backgroundColor: isSelected
+            ? const Color(0xFFE50914)
+            : Colors.transparent,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, size: 18),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Text(
+              label,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AuthDivider extends StatelessWidget {
+  final String label;
+
+  const _AuthDivider({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: Divider(
+            color: Colors.white.withValues(alpha: 0.16),
+            height: 1,
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white54,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+        Expanded(
+          child: Divider(
+            color: Colors.white.withValues(alpha: 0.16),
+            height: 1,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SocialAuthButton extends StatelessWidget {
+  final String assetPath;
+  final String label;
+  final VoidCallback? onPressed;
+
+  const _SocialAuthButton({
+    required this.assetPath,
+    required this.label,
+    this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isApple = assetPath.contains('apple');
+
+    return SizedBox(
+      height: 52,
+      child: OutlinedButton(
+        onPressed: onPressed,
+        style: OutlinedButton.styleFrom(
+          foregroundColor: Colors.white,
+          backgroundColor: Colors.white.withValues(alpha: 0.04),
+          side: BorderSide(color: Colors.white.withValues(alpha: 0.14)),
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            SizedBox(
+              width: 24,
+              height: 24,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(6),
+                child: Image.asset(
+                  assetPath,
+                  width: 24,
+                  height: 24,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    return _SocialIconFallback(isApple: isApple);
+                  },
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Flexible(
+              child: Text(
+                label,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SocialIconFallback extends StatelessWidget {
+  final bool isApple;
+
+  const _SocialIconFallback({required this.isApple});
+
+  @override
+  Widget build(BuildContext context) {
+    if (isApple) {
+      return Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: const Icon(Icons.apple, color: Colors.black, size: 18),
+      );
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: const Center(
+        child: Text(
+          'G',
+          style: TextStyle(
+            color: Color(0xFF4285F4),
+            fontSize: 16,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+      ),
+    );
   }
 }
 

@@ -8,10 +8,12 @@ import '../../providers/response_provider.dart';
 import '../../providers/team_provider.dart';
 import '../../widgets/app_network_image.dart';
 import 'about_management_screen.dart';
+import 'notification_campaign_screen.dart';
 import 'upload_media_screen.dart';
 import 'responses_screen.dart';
 import 'service_requests_screen.dart';
 import 'team_management_screen.dart';
+import 'user_management_screen.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -30,6 +32,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
     const AboutManagementScreen(),
     const AdminResponsesScreen(),
     const AdminServiceRequestsScreen(),
+    const AdminNotificationCampaignScreen(),
+    const AdminUserManagementScreen(),
   ];
 
   static const _titles = [
@@ -129,6 +133,38 @@ class AdminHomeScreen extends StatelessWidget {
                   const Text(
                     'Welcome, Admin!',
                     style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 18),
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 12,
+                    children: [
+                      _AdminShortcutButton(
+                        icon: Icons.notifications_active_outlined,
+                        label: 'Send Promotions',
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) =>
+                                  const AdminNotificationCampaignScreen(),
+                            ),
+                          );
+                        },
+                      ),
+                      _AdminShortcutButton(
+                        icon: Icons.manage_accounts_outlined,
+                        label: 'Manage Users',
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const AdminUserManagementScreen(),
+                            ),
+                          );
+                        },
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 18),
                   GridView.count(
@@ -644,6 +680,32 @@ class _AdminMediaAction extends StatelessWidget {
             child: Icon(icon, size: 18, color: color ?? Colors.white),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _AdminShortcutButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onPressed;
+
+  const _AdminShortcutButton({
+    required this.icon,
+    required this.label,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return OutlinedButton.icon(
+      onPressed: onPressed,
+      icon: Icon(icon),
+      label: Text(label),
+      style: OutlinedButton.styleFrom(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        side: BorderSide(color: Colors.white.withValues(alpha: 0.14)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
   }

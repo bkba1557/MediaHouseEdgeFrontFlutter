@@ -17,8 +17,10 @@ class AppLocalizations {
 
   const AppLocalizations(this.locale);
 
+  static const defaultLocale = Locale('ar');
+
   static const supportedLocales = <Locale>[
-    Locale('ar'),
+    defaultLocale,
     Locale('en'),
     Locale('hi'),
     Locale('bn'),
@@ -100,11 +102,26 @@ class AppLocalizations {
     Map<String, String> params = const {},
   }) {
     final code = locale.languageCode;
+    final canonicalKey = _canonicalizeTranslationKey(key);
+    final canonicalFallback = fallback == null
+        ? null
+        : _canonicalizeTranslationKey(fallback);
+
     final translation =
-        _translationsByLanguage[code]?[key] ??
-        _translationsByLanguage['en']?[key] ??
-        fallback ??
-        key;
+        _lookupTranslation(code, key) ??
+        _lookupTranslation(code, canonicalKey) ??
+        _lookupTranslation(code, fallback) ??
+        _lookupTranslation(code, canonicalFallback) ??
+        (code == 'en'
+            ? _lookupTranslation('en', key) ??
+                  _lookupTranslation('en', canonicalKey) ??
+                  fallback ??
+                  key
+            : _lookupTranslation('ar', key) ??
+                  _lookupTranslation('ar', canonicalKey) ??
+                  (_containsArabicScript(canonicalKey)
+                      ? canonicalKey
+                      : fallback ?? key));
 
     if (params.isEmpty) return translation;
 
@@ -151,7 +168,22 @@ class _AppLocalizationsDelegate
 }
 
 const Map<String, Map<String, String>> _translationsByLanguage = {
+  'ar': {
+    'Media House Edge': 'ميديا هاوس إيدج',
+    'Crew / فريق العمل': 'فريق العمل',
+    'Category: {category}': 'التصنيف: {category}',
+    'Views: {views}': 'المشاهدات: {views}',
+    'Preview': 'معاينة',
+    'Title': 'العنوان',
+    'Description': 'الوصف',
+    'Type': 'النوع',
+    'Category': 'التصنيف',
+    'Upload': 'رفع',
+    'Video Cover (Thumbnail)': 'صورة غلاف الفيديو',
+    'Folder / Series': 'المجلد / السلسلة',
+  },
   'en': {
+    'Media House Edge': 'Media House Edge',
     'من نحن': 'About Us',
     'تسجيل الدخول': 'Sign In',
     'إنشاء حساب': 'Create Account',
@@ -827,3 +859,21 @@ const Map<String, Map<String, String>> _translationsByLanguage = {
     'حصل خطأ أثناء تحميل المحتوى': 'هنگام بارگذاری محتوا خطایی رخ داد',
   },
 };
+
+final Map<String, String> _canonicalKeysByEnglishValue = Map.unmodifiable({
+  for (final entry in (_translationsByLanguage['en'] ?? const {}).entries)
+    entry.value: entry.key,
+});
+
+String _canonicalizeTranslationKey(String value) {
+  return _canonicalKeysByEnglishValue[value] ?? value;
+}
+
+String? _lookupTranslation(String languageCode, String? key) {
+  if (key == null || key.isEmpty) return null;
+  return _translationsByLanguage[languageCode]?[key];
+}
+
+bool _containsArabicScript(String value) {
+  return RegExp(r'[\u0600-\u06FF]').hasMatch(value);
+}
