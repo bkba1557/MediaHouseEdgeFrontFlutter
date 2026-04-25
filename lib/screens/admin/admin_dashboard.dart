@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../config/service_folder_config.dart';
 import '../../models/media.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/about_provider.dart';
@@ -456,6 +457,21 @@ class AdminHomeScreen extends StatelessWidget {
     String category = categoryOptions.contains(media.category)
         ? media.category
         : 'film';
+    var folderOptions = await _loadFolderOptions(
+      mediaProvider,
+      category,
+      currentOption: _currentFolderOption(media),
+    );
+    String? selectedCollectionKey = _currentFolderOption(media)?.collectionKey;
+    bool isAddingCustomFolder = false;
+    bool isLoadingFolders = false;
+    collectionTitleController.clear();
+    if (serviceCategoryRequiresFolder(category) &&
+        selectedCollectionKey == null &&
+        folderOptions.isNotEmpty) {
+      selectedCollectionKey = folderOptions.first.collectionKey;
+    }
+    if (!context.mounted) return;
 
     bool saved = false;
     try {
@@ -513,18 +529,140 @@ class AdminHomeScreen extends StatelessWidget {
                                 ),
                               )
                               .toList(),
-                          onChanged: (value) => setDialogState(
-                            () => category = value ?? category,
-                          ),
+                          onChanged: (value) async {
+                            if (value == null || value == category) return;
+
+                            setDialogState(() {
+                              category = value;
+                              isLoadingFolders = serviceCategoryRequiresFolder(
+                                value,
+                              );
+                            });
+
+                            if (value != 'series_movies') {
+                              sequenceController.clear();
+                            }
+
+                            if (!serviceCategoryRequiresFolder(value)) {
+                              setDialogState(() {
+                                folderOptions = const [];
+                                selectedCollectionKey = null;
+                                isAddingCustomFolder = false;
+                                isLoadingFolders = false;
+                                collectionTitleController.clear();
+                              });
+                              return;
+                            }
+
+                            final loadedOptions = await _loadFolderOptions(
+                              mediaProvider,
+                              value,
+                            );
+                            if (!dialogContext.mounted) return;
+
+                            setDialogState(() {
+                              folderOptions = loadedOptions;
+                              isLoadingFolders = false;
+                              collectionTitleController.clear();
+                              if (loadedOptions.isEmpty) {
+                                selectedCollectionKey = null;
+                                isAddingCustomFolder = true;
+                                return;
+                              }
+
+                              selectedCollectionKey =
+                                  loadedOptions.first.collectionKey;
+                              isAddingCustomFolder = false;
+                            });
+                          },
                         ),
-                        if (category == 'series_movies') ...[
+                        if (serviceCategoryRequiresFolder(category)) ...[
                           const SizedBox(height: 10),
-                          TextField(
-                            controller: collectionTitleController,
-                            decoration: const InputDecoration(
-                              labelText: 'Folder / Series name',
+                          if (isLoadingFolders)
+                            const LinearProgressIndicator(minHeight: 2),
+                          if (folderOptions.isNotEmpty && !isAddingCustomFolder)
+                            DropdownButtonFormField<String>(
+                              initialValue: selectedCollectionKey,
+                              decoration: const InputDecoration(
+                                labelText: 'Folder',
+                              ),
+                              items: folderOptions
+                                  .map(
+                                    (option) => DropdownMenuItem(
+                                      value: option.collectionKey,
+                                      child: Text(option.collectionTitle),
+                                    ),
+                                  )
+                                  .toList(),
+                              onChanged: (value) => setDialogState(
+                                () => selectedCollectionKey = value,
+                              ),
+                            )
+                          else
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.04),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: Colors.white12),
+                              ),
+                              child: Text(
+                                folderOptions.isEmpty
+                                    ? 'No folders yet. Add a new one below.'
+                                    : 'Create a new folder for this section.',
+                                style: const TextStyle(fontSize: 13),
+                              ),
                             ),
+                          const SizedBox(height: 8),
+                          Wrap(
+                            spacing: 8,
+                            children: [
+                              TextButton.icon(
+                                onPressed: isAddingCustomFolder
+                                    ? null
+                                    : () {
+                                        setDialogState(() {
+                                          isAddingCustomFolder = true;
+                                          selectedCollectionKey = null;
+                                          collectionTitleController.clear();
+                                        });
+                                      },
+                                icon: const Icon(
+                                  Icons.create_new_folder_outlined,
+                                ),
+                                label: const Text('New folder'),
+                              ),
+                              if (folderOptions.isNotEmpty)
+                                TextButton.icon(
+                                  onPressed: !isAddingCustomFolder
+                                      ? null
+                                      : () {
+                                          setDialogState(() {
+                                            isAddingCustomFolder = false;
+                                            collectionTitleController.clear();
+                                            selectedCollectionKey =
+                                                folderOptions
+                                                    .first
+                                                    .collectionKey;
+                                          });
+                                        },
+                                  icon: const Icon(Icons.folder_open_outlined),
+                                  label: const Text('Use existing'),
+                                ),
+                            ],
                           ),
+                          if (isAddingCustomFolder) ...[
+                            const SizedBox(height: 8),
+                            TextField(
+                              controller: collectionTitleController,
+                              decoration: const InputDecoration(
+                                labelText: 'New folder name',
+                              ),
+                            ),
+                          ],
+                        ],
+                        if (category == 'series_movies') ...[
                           const SizedBox(height: 10),
                           TextField(
                             controller: sequenceController,
@@ -560,8 +698,19 @@ class AdminHomeScreen extends StatelessWidget {
 
       final updatedTitle = titleController.text.trim();
       final updatedDescription = descriptionController.text.trim();
-      final updatedCollectionTitle = collectionTitleController.text.trim();
+      final updatedCollectionTitle = isAddingCustomFolder
+          ? normalizeFolderTitle(collectionTitleController.text)
+          : _resolveFolderTitle(folderOptions, selectedCollectionKey);
       final updatedSequence = int.tryParse(sequenceController.text.trim());
+
+      if (serviceCategoryRequiresFolder(category) &&
+          updatedCollectionTitle == null) {
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Select a folder or create a new one')),
+        );
+        return;
+      }
 
       await mediaProvider.updateMediaMetadata(
         id: media.id,
@@ -570,19 +719,13 @@ class AdminHomeScreen extends StatelessWidget {
         description: updatedDescription,
         type: type,
         category: category,
-        collectionTitle:
-            category == 'series_movies' && updatedCollectionTitle.isNotEmpty
-            ? updatedCollectionTitle
-            : null,
-        collectionKey:
-            category == 'series_movies' && updatedCollectionTitle.isNotEmpty
-            ? updatedCollectionTitle
-                  .trim()
-                  .toLowerCase()
-                  .replaceAll(RegExp(r'[^a-z0-9]+'), '_')
-                  .replaceAll(RegExp(r'^_+|_+$'), '')
-            : null,
+        collectionTitle: updatedCollectionTitle,
+        collectionKey: updatedCollectionTitle == null
+            ? null
+            : buildCollectionKey(updatedCollectionTitle),
         sequence: category == 'series_movies' ? updatedSequence : null,
+        clearCollectionFields: !serviceCategoryRequiresFolder(category),
+        clearSequence: category != 'series_movies',
       );
       if (!context.mounted) return;
       ScaffoldMessenger.of(
@@ -599,6 +742,66 @@ class AdminHomeScreen extends StatelessWidget {
       collectionTitleController.dispose();
       sequenceController.dispose();
     }
+  }
+
+  Future<List<ServiceFolderOption>> _loadFolderOptions(
+    MediaProvider mediaProvider,
+    String category, {
+    ServiceFolderOption? currentOption,
+  }) async {
+    if (!serviceCategoryRequiresFolder(category)) return const [];
+
+    final merged = <String, ServiceFolderOption>{};
+    for (final option in defaultFoldersForCategory(category)) {
+      merged[option.collectionKey] = option;
+    }
+
+    try {
+      final fetched = await mediaProvider.fetchFolders(category: category);
+      for (final folder in fetched) {
+        final title = normalizeFolderTitle(folder.collectionTitle);
+        final key = folder.collectionKey.trim().isEmpty
+            ? buildCollectionKey(title)
+            : folder.collectionKey.trim();
+        if (title.isEmpty || key.isEmpty) continue;
+        merged[key] = ServiceFolderOption(
+          collectionKey: key,
+          collectionTitle: title,
+        );
+      }
+    } catch (_) {}
+
+    if (currentOption != null) {
+      merged[currentOption.collectionKey] = currentOption;
+    }
+
+    final options = merged.values.toList(growable: false)
+      ..sort((a, b) => a.collectionTitle.compareTo(b.collectionTitle));
+    return options;
+  }
+
+  ServiceFolderOption? _currentFolderOption(Media media) {
+    final title = normalizeFolderTitle(media.collectionTitle ?? '');
+    if (title.isEmpty) return null;
+
+    final existingKey = (media.collectionKey ?? '').trim();
+    final key = existingKey.isEmpty ? buildCollectionKey(title) : existingKey;
+    if (key.isEmpty) return null;
+
+    return ServiceFolderOption(collectionKey: key, collectionTitle: title);
+  }
+
+  String? _resolveFolderTitle(
+    List<ServiceFolderOption> options,
+    String? collectionKey,
+  ) {
+    if (collectionKey == null || collectionKey.trim().isEmpty) return null;
+    for (final option in options) {
+      if (option.collectionKey == collectionKey) {
+        return option.collectionTitle;
+      }
+    }
+    return null;
   }
 
   Widget _buildStatCard(

@@ -10,6 +10,7 @@ import '../../providers/auth_provider.dart';
 import '../../providers/team_provider.dart';
 import '../../services/firebase_asset_upload_service.dart';
 import '../../widgets/app_network_image.dart';
+import '../../widgets/fixed_aspect_cropper_dialog.dart';
 
 class TeamManagementScreen extends StatefulWidget {
   const TeamManagementScreen({super.key});
@@ -117,7 +118,7 @@ class _TeamManagementScreenState extends State<TeamManagementScreen> {
                                 ),
                                 SizedBox(height: 6),
                                 Text(
-                                  'أضف الموظفين، صورهم، مهاراتهم، وأعمالهم.',
+                                  'أضف الموظفين وصورهم ومهاراتهم وأعمالهم وشهاداتهم.',
                                   style: TextStyle(color: Colors.white70),
                                 ),
                               ],
@@ -193,7 +194,8 @@ class _TeamMemberEditorScreenState extends State<TeamMemberEditorScreen> {
   final _bioController = TextEditingController();
   final _skillsController = TextEditingController();
   final _orderController = TextEditingController();
-  final List<_PortfolioDraft> _portfolio = [];
+  final List<_AssetDraft> _portfolio = [];
+  final List<_AssetDraft> _certifications = [];
   XFile? _photoFile;
   String? _existingPhotoUrl;
   bool _isSaving = false;
@@ -212,8 +214,20 @@ class _TeamMemberEditorScreenState extends State<TeamMemberEditorScreen> {
     _skillsController.text = member.skills.join(', ');
     _orderController.text = member.order.toString();
     _existingPhotoUrl = member.photoUrl;
-    _portfolio.addAll(
-      member.portfolio.map((item) => _PortfolioDraft.fromAsset(item)),
+    _portfolio.addAll(member.portfolio.map(_AssetDraft.fromAsset));
+    _certifications.addAll(member.certifications.map(_AssetDraft.fromAsset));
+  }
+
+  Future<XFile?> _cropImage(
+    XFile file, {
+    required double aspectRatio,
+    required String title,
+  }) {
+    return showFixedAspectCropperDialog(
+      context,
+      sourceFile: file,
+      aspectRatio: aspectRatio,
+      title: title,
     );
   }
 
@@ -221,7 +235,73 @@ class _TeamMemberEditorScreenState extends State<TeamMemberEditorScreen> {
     final picker = ImagePicker();
     final file = await picker.pickImage(source: ImageSource.gallery);
     if (file == null) return;
-    setState(() => _photoFile = file);
+
+    final cropped = await _cropImage(
+      file,
+      aspectRatio: 220 / 270,
+      title: 'قص صورة عضو الفريق',
+    );
+    if (cropped == null) return;
+
+    setState(() => _photoFile = cropped);
+  }
+
+  Future<List<Map<String, dynamic>>> _buildAssetPayload(
+    List<_AssetDraft> drafts, {
+    required String entryLabel,
+    required String assetSubfolder,
+    required String coverSubfolder,
+  }) async {
+    final payload = <Map<String, dynamic>>[];
+
+    for (var index = 0; index < drafts.length; index++) {
+      final item = drafts[index];
+      final title = item.titleController.text.trim();
+      final description = item.descriptionController.text.trim();
+      final currentUrl = item.currentUrl.trim();
+
+      if (title.isEmpty && currentUrl.isEmpty && item.file == null) {
+        continue;
+      }
+      if (title.isEmpty) {
+        throw Exception('أدخل عنوان $entryLabel رقم ${index + 1}');
+      }
+
+      var assetUrl = currentUrl;
+      if (item.file != null) {
+        assetUrl = await FirebaseAssetUploadService.uploadFile(
+          file: item.file!,
+          type: item.type,
+          folder: 'team',
+          subfolder: assetSubfolder,
+        );
+      }
+      if (assetUrl.isEmpty) {
+        throw Exception('اختر ملفًا لـ "$title"');
+      }
+
+      String? thumbnail = item.currentThumbnail.trim().isEmpty
+          ? null
+          : item.currentThumbnail.trim();
+      if (item.type == 'video' && item.thumbnailFile != null) {
+        thumbnail = await FirebaseAssetUploadService.uploadFile(
+          file: item.thumbnailFile!,
+          type: 'image',
+          folder: 'team',
+          subfolder: coverSubfolder,
+        );
+      }
+
+      payload.add({
+        'title': title,
+        'description': description,
+        'type': item.type,
+        'url': assetUrl,
+        if (thumbnail != null && thumbnail.isNotEmpty) 'thumbnail': thumbnail,
+      });
+    }
+
+    return payload;
   }
 
   Future<void> _save() async {
@@ -249,53 +329,18 @@ class _TeamMemberEditorScreenState extends State<TeamMemberEditorScreen> {
         );
       }
 
-      final portfolioPayload = <Map<String, dynamic>>[];
-      for (var index = 0; index < _portfolio.length; index++) {
-        final item = _portfolio[index];
-        final title = item.titleController.text.trim();
-        final description = item.descriptionController.text.trim();
-        final currentUrl = item.currentUrl.trim();
-
-        if (title.isEmpty && currentUrl.isEmpty && item.file == null) {
-          continue;
-        }
-        if (title.isEmpty) {
-          throw Exception('أدخل عنوان العمل رقم ${index + 1}');
-        }
-
-        var assetUrl = currentUrl;
-        if (item.file != null) {
-          assetUrl = await FirebaseAssetUploadService.uploadFile(
-            file: item.file!,
-            type: item.type,
-            folder: 'team',
-            subfolder: 'portfolio',
-          );
-        }
-        if (assetUrl.isEmpty) {
-          throw Exception('اختر ملفًا للعمل "$title"');
-        }
-
-        String? thumbnail = item.currentThumbnail.trim().isEmpty
-            ? null
-            : item.currentThumbnail.trim();
-        if (item.type == 'video' && item.thumbnailFile != null) {
-          thumbnail = await FirebaseAssetUploadService.uploadFile(
-            file: item.thumbnailFile!,
-            type: 'image',
-            folder: 'team',
-            subfolder: 'portfolio-covers',
-          );
-        }
-
-        portfolioPayload.add({
-          'title': title,
-          'description': description,
-          'type': item.type,
-          'url': assetUrl,
-          if (thumbnail != null && thumbnail.isNotEmpty) 'thumbnail': thumbnail,
-        });
-      }
+      final portfolioPayload = await _buildAssetPayload(
+        _portfolio,
+        entryLabel: 'العمل',
+        assetSubfolder: 'portfolio',
+        coverSubfolder: 'portfolio-covers',
+      );
+      final certificationsPayload = await _buildAssetPayload(
+        _certifications,
+        entryLabel: 'الشهادة أو التكريم',
+        assetSubfolder: 'certifications',
+        coverSubfolder: 'certification-covers',
+      );
 
       final payload = {
         'name': _nameController.text.trim(),
@@ -309,6 +354,7 @@ class _TeamMemberEditorScreenState extends State<TeamMemberEditorScreen> {
             .toList(growable: false),
         'order': int.tryParse(_orderController.text.trim()) ?? 0,
         'portfolio': portfolioPayload,
+        'certifications': certificationsPayload,
       };
 
       if (_isEditing) {
@@ -342,11 +388,21 @@ class _TeamMemberEditorScreenState extends State<TeamMemberEditorScreen> {
   }
 
   void _addPortfolioItem() {
-    setState(() => _portfolio.add(_PortfolioDraft()));
+    setState(() => _portfolio.add(_AssetDraft()));
   }
 
   void _removePortfolioItem(int index) {
     final item = _portfolio.removeAt(index);
+    item.dispose();
+    setState(() {});
+  }
+
+  void _addCertificationItem() {
+    setState(() => _certifications.add(_AssetDraft()));
+  }
+
+  void _removeCertificationItem(int index) {
+    final item = _certifications.removeAt(index);
     item.dispose();
     setState(() {});
   }
@@ -361,6 +417,9 @@ class _TeamMemberEditorScreenState extends State<TeamMemberEditorScreen> {
     for (final item in _portfolio) {
       item.dispose();
     }
+    for (final item in _certifications) {
+      item.dispose();
+    }
     super.dispose();
   }
 
@@ -373,7 +432,7 @@ class _TeamMemberEditorScreenState extends State<TeamMemberEditorScreen> {
           TextButton(
             onPressed: _isSaving ? null : _save,
             child: Text(
-              _isSaving ? 'جاري الحفظ...' : 'حفظ',
+              _isSaving ? 'جارٍ الحفظ...' : 'حفظ',
               style: const TextStyle(color: Colors.white),
             ),
           ),
@@ -451,48 +510,57 @@ class _TeamMemberEditorScreenState extends State<TeamMemberEditorScreen> {
                     ),
                   ),
                   const SizedBox(height: 26),
-                  Row(
-                    children: [
-                      const Expanded(
-                        child: Text(
-                          'الأعمال',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w900,
+                  _AssetSection(
+                    title: 'التكريمات والشهادات',
+                    addLabel: 'إضافة شهادة',
+                    emptyText:
+                        'أضف شهادات أو تكريمات لهذا العضو بصور أو فيديو.',
+                    addIcon: Icons.workspace_premium_outlined,
+                    onAdd: _addCertificationItem,
+                    children: _certifications
+                        .asMap()
+                        .entries
+                        .map(
+                          (entry) => Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: _AssetDraftCard(
+                              index: entry.key + 1,
+                              draft: entry.value,
+                              itemTitlePrefix: 'الشهادة',
+                              titleLabel: 'عنوان الشهادة أو التكريم',
+                              descriptionLabel: 'وصف الشهادة أو التكريم',
+                              onRemove: () =>
+                                  _removeCertificationItem(entry.key),
+                            ),
                           ),
-                        ),
-                      ),
-                      OutlinedButton.icon(
-                        onPressed: _addPortfolioItem,
-                        icon: const Icon(Icons.add_photo_alternate_outlined),
-                        label: const Text('إضافة عمل'),
-                      ),
-                    ],
+                        )
+                        .toList(growable: false),
                   ),
-                  const SizedBox(height: 14),
-                  if (_portfolio.isEmpty)
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.white12),
-                        color: Colors.white.withValues(alpha: 0.04),
-                      ),
-                      child: const Text('أضف أعمال الموظف بالصور أو الفيديو.'),
-                    )
-                  else
-                    ...List.generate(_portfolio.length, (index) {
-                      final item = _portfolio[index];
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: _PortfolioDraftCard(
-                          index: index + 1,
-                          draft: item,
-                          onRemove: () => _removePortfolioItem(index),
-                        ),
-                      );
-                    }),
+                  const SizedBox(height: 26),
+                  _AssetSection(
+                    title: 'الأعمال',
+                    addLabel: 'إضافة عمل',
+                    emptyText: 'أضف أعمال الموظف بالصور أو الفيديو.',
+                    addIcon: Icons.add_photo_alternate_outlined,
+                    onAdd: _addPortfolioItem,
+                    children: _portfolio
+                        .asMap()
+                        .entries
+                        .map(
+                          (entry) => Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: _AssetDraftCard(
+                              index: entry.key + 1,
+                              draft: entry.value,
+                              itemTitlePrefix: 'العمل',
+                              titleLabel: 'عنوان العمل',
+                              descriptionLabel: 'وصف العمل',
+                              onRemove: () => _removePortfolioItem(entry.key),
+                            ),
+                          ),
+                        )
+                        .toList(growable: false),
+                  ),
                   const SizedBox(height: 18),
                   SizedBox(
                     width: double.infinity,
@@ -501,7 +569,7 @@ class _TeamMemberEditorScreenState extends State<TeamMemberEditorScreen> {
                       child: Padding(
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         child: Text(
-                          _isSaving ? 'جاري الحفظ...' : 'حفظ البيانات',
+                          _isSaving ? 'جارٍ الحفظ...' : 'حفظ البيانات',
                           style: const TextStyle(fontSize: 16),
                         ),
                       ),
@@ -513,6 +581,65 @@ class _TeamMemberEditorScreenState extends State<TeamMemberEditorScreen> {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _AssetSection extends StatelessWidget {
+  final String title;
+  final String addLabel;
+  final String emptyText;
+  final IconData addIcon;
+  final VoidCallback onAdd;
+  final List<Widget> children;
+
+  const _AssetSection({
+    required this.title,
+    required this.addLabel,
+    required this.emptyText,
+    required this.addIcon,
+    required this.onAdd,
+    required this.children,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+            OutlinedButton.icon(
+              onPressed: onAdd,
+              icon: Icon(addIcon),
+              label: Text(addLabel),
+            ),
+          ],
+        ),
+        const SizedBox(height: 14),
+        if (children.isEmpty)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.white12),
+              color: Colors.white.withValues(alpha: 0.04),
+            ),
+            child: Text(emptyText),
+          )
+        else
+          ...children,
+      ],
     );
   }
 }
@@ -605,6 +732,11 @@ class _TeamMemberAdminCard extends StatelessWidget {
                         icon: Icons.auto_awesome_outlined,
                         label: '${member.skills.length} مهارات',
                       ),
+                    if (member.certifications.isNotEmpty)
+                      _InfoChip(
+                        icon: Icons.workspace_premium_outlined,
+                        label: '${member.certifications.length} شهادات',
+                      ),
                   ],
                 ),
               ],
@@ -661,7 +793,7 @@ class _InfoChip extends StatelessWidget {
   }
 }
 
-class _PortfolioDraft {
+class _AssetDraft {
   final titleController = TextEditingController();
   final descriptionController = TextEditingController();
   String type;
@@ -670,14 +802,14 @@ class _PortfolioDraft {
   String currentUrl;
   String currentThumbnail;
 
-  _PortfolioDraft({
+  _AssetDraft({
     this.type = 'image',
     this.currentUrl = '',
     this.currentThumbnail = '',
   });
 
-  factory _PortfolioDraft.fromAsset(ContentAsset asset) {
-    final draft = _PortfolioDraft(
+  factory _AssetDraft.fromAsset(ContentAsset asset) {
+    final draft = _AssetDraft(
       type: asset.type,
       currentUrl: asset.url,
       currentThumbnail: asset.thumbnail ?? '',
@@ -693,36 +825,74 @@ class _PortfolioDraft {
   }
 }
 
-class _PortfolioDraftCard extends StatefulWidget {
+class _AssetDraftCard extends StatefulWidget {
   final int index;
-  final _PortfolioDraft draft;
+  final _AssetDraft draft;
+  final String itemTitlePrefix;
+  final String titleLabel;
+  final String descriptionLabel;
   final VoidCallback onRemove;
 
-  const _PortfolioDraftCard({
+  const _AssetDraftCard({
     required this.index,
     required this.draft,
+    required this.itemTitlePrefix,
+    required this.titleLabel,
+    required this.descriptionLabel,
     required this.onRemove,
   });
 
   @override
-  State<_PortfolioDraftCard> createState() => _PortfolioDraftCardState();
+  State<_AssetDraftCard> createState() => _AssetDraftCardState();
 }
 
-class _PortfolioDraftCardState extends State<_PortfolioDraftCard> {
+class _AssetDraftCardState extends State<_AssetDraftCard> {
+  Future<XFile?> _cropImage(
+    XFile file, {
+    required double aspectRatio,
+    required String title,
+  }) {
+    return showFixedAspectCropperDialog(
+      context,
+      sourceFile: file,
+      aspectRatio: aspectRatio,
+      title: title,
+    );
+  }
+
   Future<void> _pickAsset() async {
     final picker = ImagePicker();
     final file = widget.draft.type == 'video'
         ? await picker.pickVideo(source: ImageSource.gallery)
         : await picker.pickImage(source: ImageSource.gallery);
     if (file == null) return;
-    setState(() => widget.draft.file = file);
+
+    if (widget.draft.type == 'video') {
+      setState(() => widget.draft.file = file);
+      return;
+    }
+
+    final cropped = await _cropImage(
+      file,
+      aspectRatio: 1.24,
+      title: 'قص الصورة',
+    );
+    if (cropped == null) return;
+    setState(() => widget.draft.file = cropped);
   }
 
   Future<void> _pickThumbnail() async {
     final picker = ImagePicker();
     final file = await picker.pickImage(source: ImageSource.gallery);
     if (file == null) return;
-    setState(() => widget.draft.thumbnailFile = file);
+
+    final cropped = await _cropImage(
+      file,
+      aspectRatio: 1.24,
+      title: 'قص صورة الغلاف',
+    );
+    if (cropped == null) return;
+    setState(() => widget.draft.thumbnailFile = cropped);
   }
 
   @override
@@ -742,7 +912,7 @@ class _PortfolioDraftCardState extends State<_PortfolioDraftCard> {
           Row(
             children: [
               Text(
-                'العمل ${widget.index}',
+                '${widget.itemTitlePrefix} ${widget.index}',
                 style: const TextStyle(fontWeight: FontWeight.w900),
               ),
               const Spacer(),
@@ -773,9 +943,9 @@ class _PortfolioDraftCardState extends State<_PortfolioDraftCard> {
           const SizedBox(height: 14),
           TextFormField(
             controller: draft.titleController,
-            decoration: const InputDecoration(
-              labelText: 'عنوان العمل',
-              border: OutlineInputBorder(),
+            decoration: InputDecoration(
+              labelText: widget.titleLabel,
+              border: const OutlineInputBorder(),
             ),
           ),
           const SizedBox(height: 12),
@@ -783,9 +953,9 @@ class _PortfolioDraftCardState extends State<_PortfolioDraftCard> {
             controller: draft.descriptionController,
             minLines: 2,
             maxLines: 4,
-            decoration: const InputDecoration(
-              labelText: 'وصف العمل',
-              border: OutlineInputBorder(),
+            decoration: InputDecoration(
+              labelText: widget.descriptionLabel,
+              border: const OutlineInputBorder(),
             ),
           ),
           const SizedBox(height: 12),

@@ -33,6 +33,7 @@ class TeamMember {
   final String photoUrl;
   final List<String> skills;
   final List<ContentAsset> portfolio;
+  final List<ContentAsset> certifications;
   final List<TeamMemberComment> comments;
   final int order;
   final int viewsCount;
@@ -51,6 +52,7 @@ class TeamMember {
     required this.photoUrl,
     this.skills = const [],
     this.portfolio = const [],
+    this.certifications = const [],
     this.comments = const [],
     this.order = 0,
     this.viewsCount = 0,
@@ -78,6 +80,12 @@ class TeamMember {
           : const [],
       portfolio: rawPortfolio is List
           ? rawPortfolio
+                .whereType<Map<String, dynamic>>()
+                .map(ContentAsset.fromJson)
+                .toList(growable: false)
+          : const [],
+      certifications: json['certifications'] is List
+          ? (json['certifications'] as List)
                 .whereType<Map<String, dynamic>>()
                 .map(ContentAsset.fromJson)
                 .toList(growable: false)
@@ -121,6 +129,7 @@ class TeamMember {
     String? photoUrl,
     List<String>? skills,
     List<ContentAsset>? portfolio,
+    List<ContentAsset>? certifications,
     List<TeamMemberComment>? comments,
     int? order,
     int? viewsCount,
@@ -139,6 +148,7 @@ class TeamMember {
       photoUrl: photoUrl ?? this.photoUrl,
       skills: skills ?? this.skills,
       portfolio: portfolio ?? this.portfolio,
+      certifications: certifications ?? this.certifications,
       comments: comments ?? this.comments,
       order: order ?? this.order,
       viewsCount: viewsCount ?? this.viewsCount,

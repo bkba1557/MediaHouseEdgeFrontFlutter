@@ -4,9 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
+import '../../config/service_folder_config.dart';
 import '../../models/media_crew_draft.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/media_provider.dart';
+import '../../widgets/fixed_aspect_cropper_dialog.dart';
 
 class UploadMediaScreen extends StatefulWidget {
   const UploadMediaScreen({super.key});
@@ -21,31 +23,38 @@ class _UploadMediaScreenState extends State<UploadMediaScreen> {
   final _descriptionController = TextEditingController();
   final _collectionTitleController = TextEditingController();
   final _sequenceController = TextEditingController();
+  final List<_SelectedUploadAsset> _selectedAssets = [];
+  final List<_CrewDraft> _crew = [];
+
   String _selectedType = 'image';
   String _selectedCategory = 'film';
-  XFile? _selectedFile;
+  String? _selectedCollectionKey;
   XFile? _coverFile;
-  final List<_CrewDraft> _crew = [];
+  List<ServiceFolderOption> _folderOptions = const [];
+  bool _isAddingCustomFolder = false;
+  bool _isLoadingFolders = false;
   bool _isUploading = false;
+  int _uploadingCount = 0;
+  int _uploadingTotal = 0;
 
   final List<String> _types = const ['image', 'video'];
   final List<_UploadSection> _sections = const [
     _UploadSection(
       value: 'story',
-      title: 'استوريهات 24 ساعة',
-      subtitle: 'تظهر كدوائر تحت الأب بار وتفتح شاشة كاملة',
+      title: 'استوريات 24 ساعة',
+      subtitle: 'تظهر كدوائر أسفل الشريط العلوي وتفتح شاشة كاملة',
       icon: Icons.auto_stories_outlined,
     ),
     _UploadSection(
       value: 'advertisement',
-      title: 'بانرات الإعلانات',
-      subtitle: 'تظهر في سلايدر الإعلانات المتحركة',
+      title: 'بنرات الإعلانات',
+      subtitle: 'تظهر في سلايدر البنرات ويمكن أن تكون صورة أو فيديو',
       icon: Icons.campaign_outlined,
     ),
     _UploadSection(
       value: 'video_backdrop',
       title: 'خلفيات فيديو',
-      subtitle: 'تظهر في مساحة خلفيات الفيديو المتغيرة',
+      subtitle: 'تظهر في مساحة الخلفيات المتغيرة',
       icon: Icons.video_library_outlined,
       uploadCategory: 'film',
       forcedType: 'video',
@@ -53,13 +62,13 @@ class _UploadMediaScreenState extends State<UploadMediaScreen> {
     _UploadSection(
       value: 'film',
       title: 'قسم التصوير والأعمال',
-      subtitle: 'تظهر في التصنيفات والأعمال الحديثة',
+      subtitle: 'أعمال التصوير والإنتاج المرئي',
       icon: Icons.movie_creation_outlined,
     ),
     _UploadSection(
       value: 'montage',
       title: 'قسم المونتاج والأعمال',
-      subtitle: 'تظهر في التصنيفات والأعمال الحديثة',
+      subtitle: 'أعمال المونتاج وما بعد الإنتاج',
       icon: Icons.content_cut,
     ),
     _UploadSection(
@@ -83,19 +92,19 @@ class _UploadMediaScreenState extends State<UploadMediaScreen> {
     _UploadSection(
       value: 'video_clip',
       title: 'فيديو كليب',
-      subtitle: 'فيديوهات غنائية',
+      subtitle: 'فيديوهات غنائية وموسيقية',
       icon: Icons.music_video_outlined,
     ),
     _UploadSection(
       value: 'art_production',
       title: 'إنتاج فني',
-      subtitle: 'تصميم وإنتاج عمل فني',
+      subtitle: 'تصميم وإنتاج أعمال فنية',
       icon: Icons.attach_file,
     ),
     _UploadSection(
       value: 'platform_distribution',
       title: 'إنتاج وتوزيع المنصات',
-      subtitle: 'بيع وتوزيع وتسويق الأعمال بالمنصات',
+      subtitle: 'بيع وتوزيع وتسويق الأعمال على المنصات',
       icon: Icons.money_outlined,
     ),
     _UploadSection(
@@ -119,7 +128,7 @@ class _UploadMediaScreenState extends State<UploadMediaScreen> {
     _UploadSection(
       value: 'audio_recordings',
       title: 'تسجيلات صوتية',
-      subtitle: 'تسجيل صوتي بجودة عالية للاستوديوهات والمنتجين',
+      subtitle: 'تسجيل صوتي بجودة عالية',
       icon: Icons.mic_external_on_outlined,
     ),
     _UploadSection(
@@ -142,7 +151,7 @@ class _UploadMediaScreenState extends State<UploadMediaScreen> {
     ),
     _UploadSection(
       value: 'dj_booking',
-      title: 'DJ\'s Booking',
+      title: 'DJ Booking',
       subtitle: 'حجوزات الدي جي والعروض الموسيقية والفعاليات',
       icon: Icons.queue_music_outlined,
     ),
@@ -157,32 +166,239 @@ class _UploadMediaScreenState extends State<UploadMediaScreen> {
   _UploadSection get _selectedSection =>
       _sections.firstWhere((section) => section.value == _selectedCategory);
 
+  String get _effectiveCategory =>
+      _selectedSection.uploadCategory ?? _selectedCategory;
   String get _effectiveType => _selectedSection.forcedType ?? _selectedType;
-  bool get _isSeriesMovies =>
-      (_selectedSection.uploadCategory ?? _selectedCategory) == 'series_movies';
+  bool get _isSeriesMovies => _effectiveCategory == 'series_movies';
+  bool get _isFolderRequired =>
+      serviceCategoryRequiresFolder(_effectiveCategory);
+  bool get _isSingleVideoUpload =>
+      _effectiveType == 'video' && _selectedAssets.length == 1;
 
-  String _toCollectionKey(String value) {
-    final trimmed = value.trim().toLowerCase();
-    final normalized = trimmed.replaceAll(RegExp(r'[^a-z0-9]+'), '_');
-    return normalized.replaceAll(RegExp(r'^_+|_+$'), '');
+  double get _primaryImageAspectRatio {
+    if (_selectedCategory == 'advertisement') return 16 / 9;
+    if (_isSeriesMovies) return 0.72;
+    return 0.86;
   }
 
-  Future<void> _pickFile() async {
-    final picker = ImagePicker();
-    final file = _effectiveType == 'video'
-        ? await picker.pickVideo(source: ImageSource.gallery)
-        : await picker.pickImage(source: ImageSource.gallery);
-
-    if (file != null) {
-      setState(() => _selectedFile = file);
+  String? get _resolvedCollectionTitle {
+    if (_isAddingCustomFolder) {
+      final title = normalizeFolderTitle(_collectionTitleController.text);
+      return title.isEmpty ? null : title;
     }
+
+    if (_selectedCollectionKey == null) return null;
+    for (final option in _folderOptions) {
+      if (option.collectionKey == _selectedCollectionKey) {
+        return option.collectionTitle;
+      }
+    }
+    return null;
+  }
+
+  String get _uploadButtonText {
+    if (_isUploading) {
+      if (_uploadingTotal > 0) {
+        return 'Uploading $_uploadingCount/$_uploadingTotal';
+      }
+      return 'Uploading...';
+    }
+
+    if (_selectedAssets.length > 1) {
+      return 'Upload ${_selectedAssets.length} files';
+    }
+    return 'Upload';
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _loadFolderOptions();
+    });
+  }
+
+  Future<void> _loadFolderOptions() async {
+    final category = _effectiveCategory;
+    setState(() => _isLoadingFolders = true);
+
+    final merged = <String, ServiceFolderOption>{};
+    try {
+      for (final option in defaultFoldersForCategory(category)) {
+        merged[option.collectionKey] = option;
+      }
+
+      final fetched = await context.read<MediaProvider>().fetchFolders(
+        category: category,
+      );
+      for (final folder in fetched) {
+        final title = normalizeFolderTitle(folder.collectionTitle);
+        final key = folder.collectionKey.trim().isEmpty
+            ? buildCollectionKey(title)
+            : folder.collectionKey.trim();
+        if (title.isEmpty || key.isEmpty) continue;
+        merged[key] = ServiceFolderOption(
+          collectionKey: key,
+          collectionTitle: title,
+        );
+      }
+    } catch (_) {}
+
+    if (!mounted) return;
+
+    final options = merged.values.toList(growable: false)
+      ..sort((a, b) => a.collectionTitle.compareTo(b.collectionTitle));
+
+    setState(() {
+      _folderOptions = options;
+      if (_isFolderRequired && options.isEmpty) {
+        _isAddingCustomFolder = true;
+      }
+
+      if (!_isAddingCustomFolder) {
+        final hasSelection =
+            _selectedCollectionKey != null &&
+            options.any((item) => item.collectionKey == _selectedCollectionKey);
+        if (!hasSelection) {
+          _selectedCollectionKey = options.isEmpty
+              ? null
+              : options.first.collectionKey;
+        }
+      }
+
+      _isLoadingFolders = false;
+    });
+  }
+
+  Future<XFile?> _cropPickedImage(
+    XFile file, {
+    required double aspectRatio,
+    required String title,
+  }) {
+    return showFixedAspectCropperDialog(
+      context,
+      sourceFile: file,
+      aspectRatio: aspectRatio,
+      title: title,
+    );
+  }
+
+  Future<List<XFile>> _pickImages(ImagePicker picker) async {
+    try {
+      return await picker.pickMultiImage();
+    } catch (_) {
+      final single = await picker.pickImage(source: ImageSource.gallery);
+      return single == null ? const [] : [single];
+    }
+  }
+
+  Future<List<XFile>> _pickVideos(ImagePicker picker) async {
+    try {
+      return await picker.pickMultiVideo();
+    } catch (_) {
+      final single = await picker.pickVideo(source: ImageSource.gallery);
+      return single == null ? const [] : [single];
+    }
+  }
+
+  Future<void> _pickFiles({bool append = false}) async {
+    final picker = ImagePicker();
+
+    if (_effectiveType == 'video') {
+      final files = await _pickVideos(picker);
+      if (files.isEmpty || !mounted) return;
+
+      final nextAssets = files
+          .map(
+            (file) => _SelectedUploadAsset(sourceFile: file, uploadFile: file),
+          )
+          .toList(growable: false);
+
+      setState(() {
+        if (!append) {
+          _selectedAssets.clear();
+        }
+        _selectedAssets.addAll(nextAssets);
+      });
+      return;
+    }
+
+    final files = await _pickImages(picker);
+    if (files.isEmpty) return;
+
+    final croppedAssets = <_SelectedUploadAsset>[];
+    for (final file in files) {
+      final cropped = await _cropPickedImage(
+        file,
+        aspectRatio: _primaryImageAspectRatio,
+        title: _selectedCategory == 'advertisement'
+            ? 'قص صورة البنر'
+            : 'قص صورة الكارت',
+      );
+      if (!mounted) return;
+      if (cropped == null) continue;
+
+      croppedAssets.add(
+        _SelectedUploadAsset(sourceFile: file, uploadFile: cropped),
+      );
+    }
+
+    if (croppedAssets.isEmpty) return;
+
+    setState(() {
+      if (!append) {
+        _selectedAssets.clear();
+      }
+      _selectedAssets.addAll(croppedAssets);
+    });
+  }
+
+  Future<void> _recropSelectedImage(int index) async {
+    if (index < 0 || index >= _selectedAssets.length) return;
+
+    final asset = _selectedAssets[index];
+    final cropped = await _cropPickedImage(
+      asset.sourceFile,
+      aspectRatio: _primaryImageAspectRatio,
+      title: _selectedCategory == 'advertisement'
+          ? 'قص صورة البنر'
+          : 'قص صورة الكارت',
+    );
+    if (cropped == null || !mounted) return;
+
+    setState(() {
+      _selectedAssets[index] = asset.copyWith(uploadFile: cropped);
+    });
+  }
+
+  void _removeSelectedAsset(int index) {
+    if (index < 0 || index >= _selectedAssets.length) return;
+    setState(() {
+      _selectedAssets.removeAt(index);
+    });
+  }
+
+  void _clearSelectedAssets() {
+    setState(() {
+      _selectedAssets.clear();
+      _coverFile = null;
+    });
   }
 
   Future<void> _pickCover() async {
     final picker = ImagePicker();
     final file = await picker.pickImage(source: ImageSource.gallery);
     if (file == null) return;
-    setState(() => _coverFile = file);
+
+    final cropped = await _cropPickedImage(
+      file,
+      aspectRatio: _primaryImageAspectRatio,
+      title: 'قص صورة الغلاف',
+    );
+    if (cropped == null) return;
+
+    setState(() => _coverFile = cropped);
   }
 
   void _addCrewMember() {
@@ -195,22 +411,68 @@ class _UploadMediaScreenState extends State<UploadMediaScreen> {
     setState(() {});
   }
 
+  String _fallbackTitleForFile(XFile file) {
+    final fileName = file.name.trim();
+    if (fileName.isEmpty) return _selectedSection.title;
+
+    final dotIndex = fileName.lastIndexOf('.');
+    final withoutExtension = dotIndex > 0
+        ? fileName.substring(0, dotIndex)
+        : fileName;
+    final normalized = withoutExtension
+        .replaceAll(RegExp(r'[_-]+'), ' ')
+        .trim();
+
+    return normalized.isEmpty ? _selectedSection.title : normalized;
+  }
+
+  String _buildTitleForAsset(_SelectedUploadAsset asset, int index) {
+    final typedTitle = _titleController.text.trim();
+    if (typedTitle.isEmpty) {
+      return _fallbackTitleForFile(asset.sourceFile);
+    }
+    if (_selectedAssets.length == 1) {
+      return typedTitle;
+    }
+    return '$typedTitle ${index + 1}';
+  }
+
+  int? _sequenceForAsset(int index) {
+    if (!_isSeriesMovies) return null;
+    final baseSequence = int.tryParse(_sequenceController.text.trim());
+    if (baseSequence == null) return null;
+    return baseSequence + index;
+  }
+
   Future<void> _upload() async {
     if (!_formKey.currentState!.validate()) return;
 
-    if (_selectedFile == null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('اختر ملف قبل الرفع')));
+    if (_selectedAssets.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('اختر ملفًا واحدًا على الأقل قبل الرفع')),
+      );
       return;
     }
 
-    setState(() => _isUploading = true);
+    final collectionTitle = _resolvedCollectionTitle;
+    if (_isFolderRequired &&
+        (collectionTitle == null || collectionTitle.isEmpty)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('اختر مجلدًا أو أضف مجلدًا جديدًا')),
+      );
+      return;
+    }
+
+    setState(() {
+      _isUploading = true;
+      _uploadingCount = 0;
+      _uploadingTotal = _selectedAssets.length;
+    });
 
     try {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       final mediaProvider = Provider.of<MediaProvider>(context, listen: false);
-      final category = _selectedSection.uploadCategory ?? _selectedCategory;
+      final category = _effectiveCategory;
 
       final crewDrafts = _crew
           .where((draft) => draft.nameController.text.trim().isNotEmpty)
@@ -223,55 +485,76 @@ class _UploadMediaScreenState extends State<UploadMediaScreen> {
           )
           .toList(growable: false);
 
-      await mediaProvider.uploadMedia(
-        file: _selectedFile!,
-        title: _titleController.text.trim(),
-        description: _descriptionController.text.trim(),
-        type: _effectiveType,
-        category: category,
-        token: authProvider.token!,
-        collectionTitle: _isSeriesMovies
-            ? _collectionTitleController.text.trim()
-            : null,
-        collectionKey: _isSeriesMovies
-            ? _toCollectionKey(_collectionTitleController.text)
-            : null,
-        sequence: _isSeriesMovies
-            ? int.tryParse(_sequenceController.text.trim())
-            : null,
-        coverFile: _coverFile,
-        crew: crewDrafts,
-      );
+      for (var index = 0; index < _selectedAssets.length; index++) {
+        final asset = _selectedAssets[index];
+        await mediaProvider.uploadMedia(
+          file: asset.uploadFile,
+          title: _buildTitleForAsset(asset, index),
+          description: _descriptionController.text.trim(),
+          type: _effectiveType,
+          category: category,
+          token: authProvider.token!,
+          collectionTitle: collectionTitle,
+          collectionKey: collectionTitle == null
+              ? null
+              : buildCollectionKey(collectionTitle),
+          sequence: _sequenceForAsset(index),
+          coverFile: _isSingleVideoUpload ? _coverFile : null,
+          crew: _isSingleVideoUpload ? crewDrafts : null,
+          refreshAfterUpload: index == _selectedAssets.length - 1,
+        );
+
+        if (!mounted) return;
+        setState(() => _uploadingCount = index + 1);
+      }
 
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('تم رفع المحتوى بنجاح')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            _selectedAssets.length == 1
+                ? 'تم رفع المحتوى بنجاح'
+                : 'تم رفع ${_selectedAssets.length} ملفات بنجاح',
+          ),
+        ),
+      );
 
       _titleController.clear();
       _descriptionController.clear();
-      _collectionTitleController.clear();
       _sequenceController.clear();
       for (final member in _crew) {
         member.dispose();
       }
       _crew.clear();
       setState(() {
-        _selectedFile = null;
+        _selectedAssets.clear();
         _coverFile = null;
       });
     } catch (error) {
       if (!mounted) return;
+      final partialMessage = _uploadingCount > 0 && _uploadingTotal > 1
+          ? 'فشل الرفع بعد $_uploadingCount من $_uploadingTotal ملفات: $error'
+          : 'فشل الرفع: $error';
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('فشل الرفع: $error')));
+      ).showSnackBar(SnackBar(content: Text(partialMessage)));
     } finally {
-      if (mounted) setState(() => _isUploading = false);
+      if (mounted) {
+        setState(() {
+          _isUploading = false;
+          _uploadingCount = 0;
+          _uploadingTotal = 0;
+        });
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final canShowVideoExtras = _isSingleVideoUpload;
+    final isMultiVideoUpload =
+        _effectiveType == 'video' && _selectedAssets.length > 1;
+
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
       child: Center(
@@ -282,35 +565,44 @@ class _UploadMediaScreenState extends State<UploadMediaScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _FilePickerBox(
-                  selectedFile: _selectedFile,
+                _MediaPickerPanel(
+                  selectedAssets: _selectedAssets,
                   effectiveType: _effectiveType,
-                  onTap: _pickFile,
+                  onPickInitial: _isUploading ? null : () => _pickFiles(),
+                  onAddMore: _selectedAssets.isEmpty || _isUploading
+                      ? null
+                      : () => _pickFiles(append: true),
+                  onClearAll: _selectedAssets.isEmpty || _isUploading
+                      ? null
+                      : _clearSelectedAssets,
+                  onRemoveAsset: _isUploading ? null : _removeSelectedAsset,
+                  onRecropAsset: _effectiveType == 'image' && !_isUploading
+                      ? _recropSelectedImage
+                      : null,
                 ),
                 const SizedBox(height: 20),
                 TextFormField(
                   controller: _titleController,
-                  decoration: const InputDecoration(
-                    labelText: 'Title',
-                    border: OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    labelText: _selectedAssets.length > 1
+                        ? 'العنوان الأساسي (اختياري)'
+                        : 'العنوان (اختياري)',
+                    hintText: _selectedAssets.length > 1
+                        ? 'سيُستخدم كعنوان أساسي مع ترقيم تلقائي'
+                        : 'إذا تُرك فارغًا سيتم استخدام اسم الملف',
+                    border: const OutlineInputBorder(),
                   ),
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'Please enter title';
-                    }
-                    return null;
-                  },
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
                   controller: _descriptionController,
                   decoration: const InputDecoration(
-                    labelText: 'Description',
+                    labelText: 'الوصف',
                     border: OutlineInputBorder(),
                   ),
                   maxLines: 3,
                 ),
-                if (_effectiveType == 'video') ...[
+                if (canShowVideoExtras) ...[
                   const SizedBox(height: 16),
                   const Text(
                     'Video Cover (Thumbnail)',
@@ -324,6 +616,20 @@ class _UploadMediaScreenState extends State<UploadMediaScreen> {
                         ? null
                         : () => setState(() => _coverFile = null),
                   ),
+                ] else if (isMultiVideoUpload) ...[
+                  const SizedBox(height: 16),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.04),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.white12),
+                    ),
+                    child: const Text(
+                      'عند رفع أكثر من فيديو دفعة واحدة، الغلاف وفريق العمل لن يتم تطبيقهما لأن كل فيديو يحتاج بياناته الخاصة.',
+                    ),
+                  ),
                 ],
                 const SizedBox(height: 16),
                 if (_selectedSection.forcedType == null) ...[
@@ -333,17 +639,20 @@ class _UploadMediaScreenState extends State<UploadMediaScreen> {
                       labelText: 'Type',
                       border: OutlineInputBorder(),
                     ),
-                    items: _types.map((type) {
-                      return DropdownMenuItem(
-                        value: type,
-                        child: Text(type.toUpperCase()),
-                      );
-                    }).toList(),
+                    items: _types
+                        .map(
+                          (type) => DropdownMenuItem(
+                            value: type,
+                            child: Text(type.toUpperCase()),
+                          ),
+                        )
+                        .toList(growable: false),
                     onChanged: (value) {
                       if (value == null) return;
                       setState(() {
                         _selectedType = value;
-                        _selectedFile = null;
+                        _selectedAssets.clear();
+                        _coverFile = null;
                       });
                     },
                   ),
@@ -367,43 +676,66 @@ class _UploadMediaScreenState extends State<UploadMediaScreen> {
                             _selectedType = section.forcedType!;
                           }
                           if (section.value != 'series_movies') {
-                            _collectionTitleController.clear();
                             _sequenceController.clear();
                           }
-                          _selectedFile = null;
+                          _collectionTitleController.clear();
+                          _selectedCollectionKey = null;
+                          _isAddingCustomFolder = false;
+                          _selectedAssets.clear();
+                          _coverFile = null;
                         });
+                        _loadFolderOptions();
                       },
                     ),
                   ),
                 ),
                 _SelectedSectionHint(section: _selectedSection),
+                const SizedBox(height: 16),
+                _FolderSelectionPanel(
+                  isLoading: _isLoadingFolders,
+                  isRequired: _isFolderRequired,
+                  isUsingCustomFolder: _isAddingCustomFolder,
+                  options: _folderOptions,
+                  selectedCollectionKey: _selectedCollectionKey,
+                  customFolderController: _collectionTitleController,
+                  onSelectFolder: (value) {
+                    setState(() {
+                      _selectedCollectionKey = value;
+                      _isAddingCustomFolder = false;
+                    });
+                  },
+                  onUseCustomFolder: () {
+                    setState(() {
+                      _isAddingCustomFolder = true;
+                      _selectedCollectionKey = null;
+                    });
+                  },
+                  onCancelCustomFolder:
+                      _isFolderRequired && _folderOptions.isEmpty
+                      ? null
+                      : () {
+                          setState(() {
+                            _isAddingCustomFolder = false;
+                            _collectionTitleController.clear();
+                            _selectedCollectionKey = _folderOptions.isEmpty
+                                ? null
+                                : _folderOptions.first.collectionKey;
+                          });
+                        },
+                ),
                 if (_isSeriesMovies) ...[
                   const SizedBox(height: 16),
                   const Text(
-                    'Folder / Series',
+                    'ترتيب المحتوى داخل المجلد',
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
                   ),
                   const SizedBox(height: 10),
                   TextFormField(
-                    controller: _collectionTitleController,
-                    decoration: const InputDecoration(
-                      labelText: 'اسم المجلد (اسم المسلسل / الفيلم)',
-                      border: OutlineInputBorder(),
-                    ),
-                    validator: (value) {
-                      if (!_isSeriesMovies) return null;
-                      if (value == null || value.trim().isEmpty) {
-                        return 'اكتب اسم المجلد';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  TextFormField(
                     controller: _sequenceController,
                     keyboardType: TextInputType.number,
                     decoration: const InputDecoration(
-                      labelText: 'الترتيب داخل المجلد (رقم الحلقة/الجزء)',
+                      labelText:
+                          'رقم البداية داخل المجلد (سيزيد تلقائيًا عند رفع عدة ملفات)',
                       border: OutlineInputBorder(),
                     ),
                     validator: (value) {
@@ -411,13 +743,13 @@ class _UploadMediaScreenState extends State<UploadMediaScreen> {
                       final text = value?.trim() ?? '';
                       if (text.isEmpty) return null;
                       if (int.tryParse(text) == null) {
-                        return 'اكتب رقم صحيح';
+                        return 'اكتب رقمًا صحيحًا';
                       }
                       return null;
                     },
                   ),
                 ],
-                if (_effectiveType == 'video') ...[
+                if (canShowVideoExtras) ...[
                   const SizedBox(height: 18),
                   const Text(
                     'Crew / فريق العمل',
@@ -439,7 +771,15 @@ class _UploadMediaScreenState extends State<UploadMediaScreen> {
                             source: ImageSource.gallery,
                           );
                           if (file == null) return;
-                          setState(() => item.photoFile = file);
+
+                          final cropped = await _cropPickedImage(
+                            file,
+                            aspectRatio: 1,
+                            title: 'قص صورة عضو الفريق',
+                          );
+                          if (cropped == null || !mounted) return;
+
+                          setState(() => item.photoFile = cropped);
                         },
                         onRemove: () => _removeCrewMember(index),
                       ),
@@ -464,8 +804,28 @@ class _UploadMediaScreenState extends State<UploadMediaScreen> {
                       ),
                     ),
                     child: _isUploading
-                        ? const CircularProgressIndicator(color: Colors.white)
-                        : const Text('Upload', style: TextStyle(fontSize: 16)),
+                        ? Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2.2,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Text(
+                                _uploadButtonText,
+                                style: const TextStyle(fontSize: 16),
+                              ),
+                            ],
+                          )
+                        : Text(
+                            _uploadButtonText,
+                            style: const TextStyle(fontSize: 16),
+                          ),
                   ),
                 ),
               ],
@@ -489,6 +849,395 @@ class _UploadMediaScreenState extends State<UploadMediaScreen> {
   }
 }
 
+class _SelectedUploadAsset {
+  final XFile sourceFile;
+  final XFile uploadFile;
+
+  const _SelectedUploadAsset({
+    required this.sourceFile,
+    required this.uploadFile,
+  });
+
+  _SelectedUploadAsset copyWith({XFile? uploadFile}) {
+    return _SelectedUploadAsset(
+      sourceFile: sourceFile,
+      uploadFile: uploadFile ?? this.uploadFile,
+    );
+  }
+
+  String get displayName =>
+      sourceFile.name.isNotEmpty ? sourceFile.name : uploadFile.name;
+}
+
+class _MediaPickerPanel extends StatelessWidget {
+  final List<_SelectedUploadAsset> selectedAssets;
+  final String effectiveType;
+  final VoidCallback? onPickInitial;
+  final VoidCallback? onAddMore;
+  final VoidCallback? onClearAll;
+  final ValueChanged<int>? onRemoveAsset;
+  final ValueChanged<int>? onRecropAsset;
+
+  const _MediaPickerPanel({
+    required this.selectedAssets,
+    required this.effectiveType,
+    this.onPickInitial,
+    this.onAddMore,
+    this.onClearAll,
+    this.onRemoveAsset,
+    this.onRecropAsset,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isVideo = effectiveType == 'video';
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.white24),
+        borderRadius: BorderRadius.circular(12),
+        color: Colors.white.withValues(alpha: 0.04),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  isVideo ? 'الفيديوهات المختارة' : 'الصور المختارة',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              if (selectedAssets.isNotEmpty)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE50914).withValues(alpha: 0.16),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    '${selectedAssets.length}',
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (selectedAssets.isEmpty)
+            InkWell(
+              borderRadius: BorderRadius.circular(10),
+              onTap: onPickInitial,
+              child: Container(
+                height: 220,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.white24),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      isVideo
+                          ? Icons.video_library_outlined
+                          : Icons.image_outlined,
+                      size: 52,
+                      color: Colors.grey[400],
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      isVideo
+                          ? 'اضغط لاختيار فيديو أو عدة فيديوهات'
+                          : 'اضغط لاختيار صورة أو عدة صور',
+                      style: TextStyle(color: Colors.grey[300]),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      isVideo
+                          ? 'يمكنك رفع أكثر من فيديو دفعة واحدة'
+                          : 'سيتم قص كل صورة على مقاس القسم المختار',
+                      style: TextStyle(color: Colors.grey[500], fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else ...[
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    isVideo
+                        ? 'يمكنك إضافة دفعة جديدة أو حذف أي ملف قبل الرفع.'
+                        : 'يمكنك إعادة قص أي صورة أو حذفها قبل الرفع.',
+                    style: TextStyle(color: Colors.grey[400], fontSize: 12),
+                  ),
+                ),
+                TextButton.icon(
+                  onPressed: onAddMore,
+                  icon: const Icon(Icons.add_photo_alternate_outlined),
+                  label: const Text('إضافة المزيد'),
+                ),
+                TextButton.icon(
+                  onPressed: onClearAll,
+                  icon: const Icon(Icons.delete_sweep_outlined),
+                  label: const Text('مسح الكل'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              children: List.generate(
+                selectedAssets.length,
+                (index) => _SelectedMediaCard(
+                  asset: selectedAssets[index],
+                  isVideo: isVideo,
+                  onRemove: onRemoveAsset == null
+                      ? null
+                      : () => onRemoveAsset!(index),
+                  onRecrop: !isVideo && onRecropAsset != null
+                      ? () => onRecropAsset!(index)
+                      : null,
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _SelectedMediaCard extends StatelessWidget {
+  final _SelectedUploadAsset asset;
+  final bool isVideo;
+  final VoidCallback? onRemove;
+  final VoidCallback? onRecrop;
+
+  const _SelectedMediaCard({
+    required this.asset,
+    required this.isVideo,
+    this.onRemove,
+    this.onRecrop,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 176,
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.04),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.white12),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Stack(
+              children: [
+                ClipRRect(
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(12),
+                  ),
+                  child: SizedBox(
+                    width: double.infinity,
+                    height: 132,
+                    child: isVideo
+                        ? Container(
+                            color: Colors.black26,
+                            child: const Center(
+                              child: Icon(
+                                Icons.play_circle_fill_outlined,
+                                size: 56,
+                              ),
+                            ),
+                          )
+                        : FutureBuilder<Uint8List>(
+                            future: asset.uploadFile.readAsBytes(),
+                            builder: (context, snapshot) {
+                              if (!snapshot.hasData) {
+                                return const Center(
+                                  child: CircularProgressIndicator(
+                                    color: Color(0xFFE50914),
+                                  ),
+                                );
+                              }
+                              return Image.memory(
+                                snapshot.data!,
+                                fit: BoxFit.cover,
+                              );
+                            },
+                          ),
+                  ),
+                ),
+                if (onRemove != null)
+                  Positioned(
+                    top: 8,
+                    right: 8,
+                    child: IconButton.filled(
+                      style: IconButton.styleFrom(
+                        backgroundColor: Colors.black.withValues(alpha: 0.58),
+                      ),
+                      onPressed: onRemove,
+                      icon: const Icon(Icons.close, color: Colors.white),
+                    ),
+                  ),
+              ],
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(10, 10, 10, 8),
+              child: Text(
+                asset.displayName,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            if (onRecrop != null)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: onRecrop,
+                    icon: const Icon(Icons.crop_outlined, size: 18),
+                    label: const Text('إعادة القص'),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _FolderSelectionPanel extends StatelessWidget {
+  final bool isLoading;
+  final bool isRequired;
+  final bool isUsingCustomFolder;
+  final List<ServiceFolderOption> options;
+  final String? selectedCollectionKey;
+  final TextEditingController customFolderController;
+  final ValueChanged<String?> onSelectFolder;
+  final VoidCallback onUseCustomFolder;
+  final VoidCallback? onCancelCustomFolder;
+
+  const _FolderSelectionPanel({
+    required this.isLoading,
+    required this.isRequired,
+    required this.isUsingCustomFolder,
+    required this.options,
+    required this.selectedCollectionKey,
+    required this.customFolderController,
+    required this.onSelectFolder,
+    required this.onUseCustomFolder,
+    this.onCancelCustomFolder,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white12),
+        color: Colors.white.withValues(alpha: 0.04),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  isRequired
+                      ? 'المجلد / الفئة (مطلوب)'
+                      : 'المجلد / الفئة (اختياري)',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              if (!isUsingCustomFolder)
+                TextButton.icon(
+                  onPressed: onUseCustomFolder,
+                  icon: const Icon(Icons.create_new_folder_outlined),
+                  label: const Text('إضافة جديد'),
+                )
+              else if (onCancelCustomFolder != null)
+                TextButton.icon(
+                  onPressed: onCancelCustomFolder,
+                  icon: const Icon(Icons.list_alt_outlined),
+                  label: const Text('اختيار موجود'),
+                ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          if (isLoading)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 18),
+              child: Center(
+                child: CircularProgressIndicator(color: Color(0xFFE50914)),
+              ),
+            )
+          else if (isUsingCustomFolder || options.isEmpty)
+            TextFormField(
+              controller: customFolderController,
+              decoration: InputDecoration(
+                labelText: options.isEmpty
+                    ? 'اكتب اسم المجلد أو الفئة الجديدة'
+                    : 'اسم المجلد الجديد',
+                border: const OutlineInputBorder(),
+              ),
+            )
+          else
+            DropdownButtonFormField<String>(
+              initialValue: selectedCollectionKey,
+              decoration: const InputDecoration(
+                labelText: 'اختر المجلد',
+                border: OutlineInputBorder(),
+              ),
+              items: options
+                  .map(
+                    (option) => DropdownMenuItem(
+                      value: option.collectionKey,
+                      child: Text(option.collectionTitle),
+                    ),
+                  )
+                  .toList(growable: false),
+              onChanged: onSelectFolder,
+            ),
+          if (options.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(
+              'يمكنك استخدام مجلد موجود أو إنشاء مجلد جديد أثناء الرفع.',
+              style: TextStyle(color: Colors.grey[400], fontSize: 12),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
 class _CrewDraft {
   final nameController = TextEditingController();
   final roleController = TextEditingController();
@@ -497,74 +1246,6 @@ class _CrewDraft {
   void dispose() {
     nameController.dispose();
     roleController.dispose();
-  }
-}
-
-class _FilePickerBox extends StatelessWidget {
-  final XFile? selectedFile;
-  final String effectiveType;
-  final VoidCallback onTap;
-
-  const _FilePickerBox({
-    required this.selectedFile,
-    required this.effectiveType,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        height: 220,
-        width: double.infinity,
-        decoration: BoxDecoration(
-          border: Border.all(color: Colors.grey),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: selectedFile == null
-            ? Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.cloud_upload, size: 50, color: Colors.grey[400]),
-                  const SizedBox(height: 10),
-                  Text(
-                    effectiveType == 'video'
-                        ? 'Tap to select video'
-                        : 'Tap to select image',
-                    style: TextStyle(color: Colors.grey[600]),
-                  ),
-                ],
-              )
-            : ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: effectiveType == 'video'
-                    ? const ColoredBox(
-                        color: Colors.black12,
-                        child: Center(
-                          child: Icon(Icons.play_circle_fill, size: 64),
-                        ),
-                      )
-                    : FutureBuilder<Uint8List>(
-                        future: selectedFile!.readAsBytes(),
-                        builder: (context, snapshot) {
-                          if (!snapshot.hasData) {
-                            return const Center(
-                              child: CircularProgressIndicator(),
-                            );
-                          }
-
-                          return Image.memory(
-                            snapshot.data!,
-                            fit: BoxFit.cover,
-                            width: double.infinity,
-                            height: double.infinity,
-                          );
-                        },
-                      ),
-              ),
-      ),
-    );
   }
 }
 

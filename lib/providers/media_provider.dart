@@ -7,6 +7,7 @@ import 'package:image_picker/image_picker.dart';
 import '../config/app_config.dart';
 import '../models/media.dart';
 import '../models/media_crew_draft.dart';
+import '../models/media_folder.dart';
 
 class MediaProvider with ChangeNotifier {
   List<Media> _mediaList = [];
@@ -18,6 +19,25 @@ class MediaProvider with ChangeNotifier {
   String? get error => _error;
 
   String get _baseUrl => AppConfig.apiBaseUrl;
+
+  Future<List<MediaFolder>> fetchFolders({required String category}) async {
+    final uri = Uri.parse(
+      '$_baseUrl/media/folders',
+    ).replace(queryParameters: {'category': category});
+    final response = await http.get(uri);
+
+    if (response.statusCode != 200) {
+      throw Exception(_extractError(response.body, 'Failed to load folders'));
+    }
+
+    final decoded = json.decode(response.body);
+    if (decoded is! List) return const [];
+
+    return decoded
+        .whereType<Map<String, dynamic>>()
+        .map(MediaFolder.fromJson)
+        .toList(growable: false);
+  }
 
   Future<void> fetchMedia({String? type, String? category}) async {
     _isLoading = true;
@@ -62,6 +82,7 @@ class MediaProvider with ChangeNotifier {
     int? sequence,
     XFile? coverFile,
     List<MediaCrewDraft>? crew,
+    bool refreshAfterUpload = true,
   }) async {
     _isLoading = true;
     notifyListeners();
@@ -106,11 +127,7 @@ class MediaProvider with ChangeNotifier {
             subfolder: 'crew',
           );
           uploadedCrew.add(
-            MediaCrewMember(
-              name: name,
-              role: role,
-              photoUrl: photoUrl,
-            ),
+            MediaCrewMember(name: name, role: role, photoUrl: photoUrl),
           );
         }
 
@@ -142,7 +159,9 @@ class MediaProvider with ChangeNotifier {
       );
 
       if (response.statusCode == 200) {
-        await fetchMedia();
+        if (refreshAfterUpload) {
+          await fetchMedia();
+        }
       } else {
         throw Exception(_extractError(response.body, 'Upload failed'));
       }
@@ -165,8 +184,8 @@ class MediaProvider with ChangeNotifier {
     final extension = file.name.contains('.')
         ? file.name.split('.').last.toLowerCase()
         : type == 'video'
-            ? 'mp4'
-            : 'jpg';
+        ? 'mp4'
+        : 'jpg';
     final timestamp = DateTime.now().millisecondsSinceEpoch;
     final safeName = file.name.replaceAll(RegExp(r'[^a-zA-Z0-9._-]'), '_');
     final folder = (subfolder != null && subfolder.trim().isNotEmpty)
@@ -177,7 +196,8 @@ class MediaProvider with ChangeNotifier {
     );
 
     final metadata = SettableMetadata(
-      contentType: file.mimeType ??
+      contentType:
+          file.mimeType ??
           (type == 'video' ? 'video/$extension' : 'image/$extension'),
     );
 
@@ -215,6 +235,8 @@ class MediaProvider with ChangeNotifier {
     String? collectionKey,
     String? collectionTitle,
     int? sequence,
+    bool clearCollectionFields = false,
+    bool clearSequence = false,
   }) async {
     _isLoading = true;
     _error = null;
@@ -229,9 +251,13 @@ class MediaProvider with ChangeNotifier {
       };
       if (url != null) body['url'] = url;
       if (thumbnail != null) body['thumbnail'] = thumbnail;
-      if (collectionKey != null) body['collectionKey'] = collectionKey;
-      if (collectionTitle != null) body['collectionTitle'] = collectionTitle;
-      if (sequence != null) body['sequence'] = sequence;
+      if (collectionKey != null || clearCollectionFields) {
+        body['collectionKey'] = collectionKey;
+      }
+      if (collectionTitle != null || clearCollectionFields) {
+        body['collectionTitle'] = collectionTitle;
+      }
+      if (sequence != null || clearSequence) body['sequence'] = sequence;
 
       final response = await http.patch(
         Uri.parse('$_baseUrl/media/$id'),
@@ -244,7 +270,9 @@ class MediaProvider with ChangeNotifier {
 
       if (response.statusCode == 200) {
         final decoded = json.decode(response.body);
-        final mediaJson = decoded is Map<String, dynamic> ? decoded['media'] : null;
+        final mediaJson = decoded is Map<String, dynamic>
+            ? decoded['media']
+            : null;
         if (mediaJson is Map<String, dynamic>) {
           final updated = Media.fromJson(mediaJson);
           final index = _mediaList.indexWhere((m) => m.id == id);

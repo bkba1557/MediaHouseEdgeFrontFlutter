@@ -24,7 +24,6 @@ import 'admin/admin_dashboard.dart';
 import 'about_screen.dart';
 import 'media_detail_screen.dart';
 import 'service_feed_screen.dart';
-import 'series_folders_screen.dart';
 import 'story_view_screen.dart';
 import 'team_member_profile_screen.dart';
 import 'user_profile_screen.dart';
@@ -71,7 +70,7 @@ class _HomeScreenState extends State<HomeScreen>
   final List<_StoryCategory> _categories = const [
     _StoryCategory('all', 'الكل', 'All', Icons.auto_awesome_rounded),
     _StoryCategory('film', 'تصوير', 'Filming', Icons.movie_creation_outlined),
-    _StoryCategory('montage', 'مونتاج', 'Editing', Icons.content_cut_rounded),
+    _StoryCategory('montage', 'مونتاچ', 'Editing', Icons.content_cut_rounded),
     _StoryCategory(
       'advertisement',
       'إعلانات تجارية',
@@ -84,7 +83,7 @@ class _HomeScreenState extends State<HomeScreen>
     _ServiceItem('مسلسلات وافلام', 'تلفزيونية ومنصات', Icons.tv_sharp),
     _ServiceItem('تصوير إعلانات', 'تجارية ودعائية', Icons.videocam_outlined),
     _ServiceItem('بودكاست ', 'برامج صوتية متنوعة', Icons.podcasts_outlined),
-    _ServiceItem('فديو كليب', 'فيديوهات غنائية', Icons.music_video_outlined),
+    _ServiceItem('ڤيديو كليب', 'فيديوهات غنائية', Icons.music_video_outlined),
     _ServiceItem('إنتاج فني', 'تصميم وإنتاج عمل فني', Icons.attach_file),
     _ServiceItem(
       'إنتاج وتوزيع المنصات',
@@ -92,7 +91,7 @@ class _HomeScreenState extends State<HomeScreen>
       Icons.money_outlined,
     ),
     _ServiceItem(
-      'مونتاج',
+      'مونتاچ ',
       'VFX , Color Correction , Visual Effects',
       Icons.tune_outlined,
     ),
@@ -133,7 +132,7 @@ class _HomeScreenState extends State<HomeScreen>
     ),
     _ServiceItem(
       'DJ\'s Booking',
-      'حجز وإدارة عروض الدي جي والفعاليات الموسيقية',
+      'حجز وتعاقدات فنانيين DJ\'s العالميين والحفلات الموسيقية العالمية',
       Icons.queue_music_outlined,
     ),
     _ServiceItem(
@@ -1283,7 +1282,7 @@ class _HomeScreenState extends State<HomeScreen>
       'Content that lands strong',
     );
     final subtitle = _copy(
-      'مسلسلات وافلام , تصوير إعلانات , بودكاست , فديو كليب , إنتاج فني , إنتاج وتوزيع منصات , مونتاج , إخراج سينمائي ',
+      'مسلسلات وافلام , تصوير إعلانات , بودكاست , ڤيديو كليب , إنتاج فني , إنتاج وتوزيع منصات , مونتاچ , إخراج سينمائي ',
       'Film, editing, ads, and motion content with a clear visual line.',
     );
     final titleBlock = Row(
@@ -1736,13 +1735,11 @@ class _HomeScreenState extends State<HomeScreen>
                       MaterialPageRoute(
                         builder: (_) => ChangeNotifierProvider(
                           create: (_) => MediaProvider(),
-                          child: serviceKey == 'series_movies'
-                              ? const SeriesFoldersScreen()
-                              : ServiceFeedScreen(
-                                  serviceKey: serviceKey,
-                                  serviceTitle: service.title,
-                                  serviceSubtitle: service.subtitle,
-                                ),
+                          child: ServiceFeedScreen(
+                            serviceKey: serviceKey,
+                            serviceTitle: service.title,
+                            serviceSubtitle: service.subtitle,
+                          ),
                         ),
                       ),
                     );
@@ -3042,7 +3039,36 @@ class _AdBanner extends StatelessWidget {
             children: [
               _fallbackBackground(),
 
-              if (media?.previewImageUrl != null)
+              if (media?.isVideo == true)
+                Positioned.fill(
+                  child: IgnorePointer(
+                    child: AutoPlayVideoPreview(
+                      url: Uri.parse(media!.url),
+                      fit: BoxFit.cover,
+                      placeholder: media!.previewImageUrl != null
+                          ? AppNetworkImage(
+                              url: media!.previewImageUrl!,
+                              fit: BoxFit.cover,
+                              width: double.infinity,
+                              height: double.infinity,
+                              placeholder: _fallbackBackground(),
+                              errorWidget: _fallbackBackground(),
+                            )
+                          : _fallbackBackground(),
+                      errorWidget: media!.previewImageUrl != null
+                          ? AppNetworkImage(
+                              url: media!.previewImageUrl!,
+                              fit: BoxFit.cover,
+                              width: double.infinity,
+                              height: double.infinity,
+                              placeholder: _fallbackBackground(),
+                              errorWidget: _fallbackBackground(),
+                            )
+                          : _fallbackBackground(),
+                    ),
+                  ),
+                )
+              else if (media?.previewImageUrl != null)
                 Positioned.fill(
                   child: AppNetworkImage(
                     url: media!.previewImageUrl!,
@@ -3117,7 +3143,7 @@ class _AdBanner extends StatelessWidget {
 
   static const _fallbackTitles = [
     'حملة إعلانية جديدة',
-    'مونتاج سريع للسوشيال',
+    'مونتاچ سريع للسوشيال',
     'تصوير منتجات وفيديوهات',
   ];
 }
@@ -3534,6 +3560,60 @@ class _TeamMemberSpotlightCard extends StatelessWidget {
                                   )
                                   .toList(growable: false),
                             ),
+                          if (member.certifications.isNotEmpty) ...[
+                            if (member.skills.isNotEmpty)
+                              const SizedBox(height: 10),
+                            Wrap(
+                              spacing: 6,
+                              runSpacing: 6,
+                              children: member.certifications
+                                  .take(2)
+                                  .map(
+                                    (asset) => Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 5,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: const Color(
+                                          0xFFE50914,
+                                        ).withValues(alpha: 0.14),
+                                        borderRadius: BorderRadius.circular(
+                                          999,
+                                        ),
+                                        border: Border.all(
+                                          color: const Color(
+                                            0xFFE50914,
+                                          ).withValues(alpha: 0.35),
+                                        ),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(
+                                            asset.isVideo
+                                                ? Icons.play_circle_outline
+                                                : Icons
+                                                      .workspace_premium_outlined,
+                                            size: 12,
+                                            color: titleColor,
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            asset.title,
+                                            style: TextStyle(
+                                              color: titleColor,
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  )
+                                  .toList(growable: false),
+                            ),
+                          ],
                         ],
                       ),
                     ),

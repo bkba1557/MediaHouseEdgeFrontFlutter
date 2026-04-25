@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../localization/app_localizations.dart';
+import '../models/content_asset.dart';
 import '../models/team_member.dart';
 import '../providers/auth_provider.dart';
 import '../providers/team_provider.dart';
@@ -67,7 +67,7 @@ class _TeamMemberProfileScreenState extends State<TeamMemberProfileScreen> {
                 onPressed: () =>
                     showTeamMemberCommentsSheet(context, member: member),
                 icon: const Icon(Icons.mode_comment_outlined),
-                tooltip: context.tr('التعليقات'),
+                tooltip: 'التعليقات',
               ),
             ],
           ),
@@ -91,68 +91,32 @@ class _TeamMemberProfileScreenState extends State<TeamMemberProfileScreen> {
                       ),
                       const SizedBox(height: 28),
                       _ProfileSectionHeader(
-                        title: context.tr('أعماله'),
+                        title: 'أعماله',
                         subtitle: member.portfolio.isEmpty
-                            ? context.tr('لا توجد أعمال مضافة حاليًا')
-                            : context.tr(
-                                '{count} عنصر في المعرض',
-                                params: {'count': '${member.portfolio.length}'},
-                              ),
+                            ? 'لا توجد أعمال مضافة حالياً'
+                            : '${member.portfolio.length} عنصر في المعرض',
                       ),
                       const SizedBox(height: 12),
                       if (member.portfolio.isEmpty)
-                        _EmptyPortfolioPanel()
+                        const _EmptyAssetPanel(
+                          icon: Icons.work_outline,
+                          message: 'لا توجد أعمال مضافة لهذا العضو حالياً.',
+                        )
                       else
-                        LayoutBuilder(
-                          builder: (context, constraints) {
-                            final maxColumns = constraints.maxWidth >= 1100
-                                ? 3
-                                : constraints.maxWidth >= 720
-                                ? 2
-                                : 1;
-                            final columns = member.portfolio.length < maxColumns
-                                ? member.portfolio.length
-                                : maxColumns;
-                            final aspectRatio = columns == 1 ? 1.85 : 1.24;
-
-                            return GridView.builder(
-                              shrinkWrap: true,
-                              physics: const NeverScrollableScrollPhysics(),
-                              itemCount: member.portfolio.length,
-                              gridDelegate:
-                                  SliverGridDelegateWithFixedCrossAxisCount(
-                                    crossAxisCount: columns,
-                                    mainAxisSpacing: 14,
-                                    crossAxisSpacing: 14,
-                                    childAspectRatio: aspectRatio,
-                                  ),
-                              itemBuilder: (context, index) {
-                                final asset = member.portfolio[index];
-                                return ContentAssetPreviewTile(
-                                  asset: asset,
-                                  borderRadius: 8,
-                                  onTap: () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (_) =>
-                                            ContentAssetViewerScreen(
-                                              asset: asset,
-                                            ),
-                                      ),
-                                    );
-                                  },
-                                );
-                              },
-                            );
-                          },
+                        _AssetGrid(assets: member.portfolio),
+                      if (member.certifications.isNotEmpty) ...[
+                        const SizedBox(height: 28),
+                        _ProfileSectionHeader(
+                          title: 'التكريمات والشهادات',
+                          subtitle: '${member.certifications.length} عنصر مرئي',
                         ),
+                        const SizedBox(height: 12),
+                        _AssetGrid(assets: member.certifications),
+                      ],
                       const SizedBox(height: 28),
-                      _ProfileSectionHeader(
-                        title: context.tr('التعليقات'),
-                        subtitle: context.tr(
-                          'آراء الزوار والمستخدمين على هذا العضو',
-                        ),
+                      const _ProfileSectionHeader(
+                        title: 'التعليقات',
+                        subtitle: 'آراء الزوار والمستخدمين على هذا العضو',
                       ),
                       const SizedBox(height: 12),
                       Container(
@@ -165,7 +129,7 @@ class _TeamMemberProfileScreenState extends State<TeamMemberProfileScreen> {
                         ),
                         child: TeamMemberCommentsPanel(
                           memberId: member.id,
-                          title: context.tr('أضف رأيك'),
+                          title: 'أضف رأيك',
                         ),
                       ),
                     ],
@@ -174,6 +138,54 @@ class _TeamMemberProfileScreenState extends State<TeamMemberProfileScreen> {
               ),
             ],
           ),
+        );
+      },
+    );
+  }
+}
+
+class _AssetGrid extends StatelessWidget {
+  final List<ContentAsset> assets;
+
+  const _AssetGrid({required this.assets});
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final maxColumns = constraints.maxWidth >= 1100
+            ? 3
+            : constraints.maxWidth >= 720
+            ? 2
+            : 1;
+        final columns = assets.length < maxColumns ? assets.length : maxColumns;
+        final aspectRatio = columns == 1 ? 1.85 : 1.24;
+
+        return GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: assets.length,
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: columns,
+            mainAxisSpacing: 14,
+            crossAxisSpacing: 14,
+            childAspectRatio: aspectRatio,
+          ),
+          itemBuilder: (context, index) {
+            final asset = assets[index];
+            return ContentAssetPreviewTile(
+              asset: asset,
+              borderRadius: 8,
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => ContentAssetViewerScreen(asset: asset),
+                  ),
+                );
+              },
+            );
+          },
         );
       },
     );
@@ -284,8 +296,8 @@ class _ProfileDetails extends StatelessWidget {
               color: const Color(0xFFE50914).withValues(alpha: 0.34),
             ),
           ),
-          child: Text(
-            context.tr('ملف عضو الفريق'),
+          child: const Text(
+            'ملف عضو الفريق',
             style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12),
           ),
         ),
@@ -310,17 +322,15 @@ class _ProfileDetails extends StatelessWidget {
           children: [
             _ProfileStatChip(
               icon: Icons.work_outline,
-              label: context.tr(
-                '{count} أعمال',
-                params: {'count': '${member.portfolio.length}'},
-              ),
+              label: '${member.portfolio.length} أعمال',
             ),
             _ProfileStatChip(
               icon: Icons.auto_awesome_outlined,
-              label: context.tr(
-                '{count} مهارات',
-                params: {'count': '${member.skills.length}'},
-              ),
+              label: '${member.skills.length} مهارات',
+            ),
+            _ProfileStatChip(
+              icon: Icons.workspace_premium_outlined,
+              label: '${member.certifications.length} شهادات',
             ),
           ],
         ),
@@ -336,21 +346,19 @@ class _ProfileDetails extends StatelessWidget {
               icon: Icon(
                 isLiked ? Icons.favorite_rounded : Icons.favorite_border,
               ),
-              label: Text(
-                isLiked ? context.tr('تم الإعجاب') : context.tr('إعجاب'),
-              ),
+              label: Text(isLiked ? 'تم الإعجاب' : 'إعجاب'),
             ),
             OutlinedButton.icon(
               onPressed: onComment,
               icon: const Icon(Icons.mode_comment_outlined),
-              label: Text(context.tr('عرض التعليقات')),
+              label: const Text('عرض التعليقات'),
             ),
           ],
         ),
         if (member.bio.trim().isNotEmpty) ...[
           const SizedBox(height: 18),
           _ProfileInfoPanel(
-            title: context.tr('نبذة'),
+            title: 'نبذة',
             child: Text(
               member.bio,
               style: const TextStyle(color: Colors.white70, height: 1.8),
@@ -360,7 +368,7 @@ class _ProfileDetails extends StatelessWidget {
         if (member.skills.isNotEmpty) ...[
           const SizedBox(height: 18),
           _ProfileInfoPanel(
-            title: context.tr('المهارات'),
+            title: 'المهارات',
             child: Wrap(
               spacing: 10,
               runSpacing: 10,
@@ -382,6 +390,52 @@ class _ProfileDetails extends StatelessWidget {
                           fontWeight: FontWeight.w700,
                           color: Colors.white,
                         ),
+                      ),
+                    ),
+                  )
+                  .toList(growable: false),
+            ),
+          ),
+        ],
+        if (member.certifications.isNotEmpty) ...[
+          const SizedBox(height: 18),
+          _ProfileInfoPanel(
+            title: 'التكريمات والشهادات',
+            child: Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: member.certifications
+                  .take(4)
+                  .map(
+                    (asset) => Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.05),
+                        borderRadius: BorderRadius.circular(999),
+                        border: Border.all(color: Colors.white12),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            asset.isVideo
+                                ? Icons.play_circle_outline
+                                : Icons.workspace_premium_outlined,
+                            size: 16,
+                            color: const Color(0xFFE50914),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            asset.title,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   )
@@ -579,7 +633,12 @@ class _ProfileStatChip extends StatelessWidget {
   }
 }
 
-class _EmptyPortfolioPanel extends StatelessWidget {
+class _EmptyAssetPanel extends StatelessWidget {
+  final IconData icon;
+  final String message;
+
+  const _EmptyAssetPanel({required this.icon, required this.message});
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -600,10 +659,10 @@ class _EmptyPortfolioPanel extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.work_outline, color: Color(0xFFE50914), size: 22),
+          Icon(icon, color: const Color(0xFFE50914), size: 22),
           const SizedBox(height: 10),
           Text(
-            context.tr('لا توجد أعمال مضافة لهذا العضو حاليًا.'),
+            message,
             style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
           ),
         ],
