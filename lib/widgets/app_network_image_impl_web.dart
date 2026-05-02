@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'app_network_image_impl.dart';
+import '../utils/web_performance.dart';
 
 class AppNetworkImageImplFactory extends StatefulWidget
     implements AppNetworkImageImpl {
@@ -60,6 +61,12 @@ class _AppNetworkImageImplFactoryState
   Widget build(BuildContext context) {
     final finiteWidth = widget.width?.isFinite == true ? widget.width : null;
     final finiteHeight = widget.height?.isFinite == true ? widget.height : null;
+    final dpr = MediaQuery.maybeDevicePixelRatioOf(context) ?? 1.0;
+    final liteWebMode = isHandheldWeb(context);
+    final cacheWidth = finiteWidth == null ? null : (finiteWidth * dpr).round();
+    final cacheHeight = finiteHeight == null
+        ? null
+        : (finiteHeight * dpr).round();
 
     return SizedBox(
       width: finiteWidth,
@@ -69,9 +76,13 @@ class _AppNetworkImageImplFactoryState
         fit: widget.fit,
         width: finiteWidth,
         height: finiteHeight,
+        cacheWidth: cacheWidth,
+        cacheHeight: cacheHeight,
         alignment: Alignment.center,
-        filterQuality: FilterQuality.high,
-        webHtmlElementStrategy: WebHtmlElementStrategy.prefer,
+        filterQuality: liteWebMode ? FilterQuality.low : FilterQuality.medium,
+        webHtmlElementStrategy: liteWebMode
+            ? WebHtmlElementStrategy.fallback
+            : WebHtmlElementStrategy.prefer,
         frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
           if (wasSynchronouslyLoaded || frame != null) {
             return child;

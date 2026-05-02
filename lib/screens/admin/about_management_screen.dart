@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
+import '../../localization/app_localizations.dart';
 import '../../models/about_page_content.dart';
 import '../../models/content_asset.dart';
 import '../../providers/about_provider.dart';
@@ -23,6 +24,14 @@ class _AboutManagementScreenState extends State<AboutManagementScreen> {
   final _heroTitleController = TextEditingController();
   final _heroSubtitleController = TextEditingController();
   final _introController = TextEditingController();
+  final _commercialRegisterController = TextEditingController();
+  final _taxNumberController = TextEditingController();
+  final _phoneController = TextEditingController();
+  final _whatsappController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _websiteController = TextEditingController();
+  final _addressArController = TextEditingController();
+  final _addressEnController = TextEditingController();
   final List<_AboutSectionDraft> _sections = [];
   bool _isLoadingPage = true;
   bool _isSaving = false;
@@ -54,6 +63,14 @@ class _AboutManagementScreenState extends State<AboutManagementScreen> {
     _heroTitleController.text = page.heroTitle;
     _heroSubtitleController.text = page.heroSubtitle;
     _introController.text = page.intro;
+    _commercialRegisterController.text = page.companyProfile.commercialRegister;
+    _taxNumberController.text = page.companyProfile.taxNumber;
+    _phoneController.text = page.companyProfile.phone;
+    _whatsappController.text = page.companyProfile.whatsapp;
+    _emailController.text = page.companyProfile.email;
+    _websiteController.text = page.companyProfile.website;
+    _addressArController.text = page.companyProfile.addressAr;
+    _addressEnController.text = page.companyProfile.addressEn;
 
     final sortedSections = [...page.sections]
       ..sort((a, b) => a.order.compareTo(b.order));
@@ -164,6 +181,16 @@ class _AboutManagementScreenState extends State<AboutManagementScreen> {
           'heroTitle': _heroTitleController.text.trim(),
           'heroSubtitle': _heroSubtitleController.text.trim(),
           'intro': _introController.text.trim(),
+          'companyProfile': {
+            'commercialRegister': _commercialRegisterController.text.trim(),
+            'taxNumber': _taxNumberController.text.trim(),
+            'phone': _phoneController.text.trim(),
+            'whatsapp': _whatsappController.text.trim(),
+            'email': _emailController.text.trim(),
+            'website': _websiteController.text.trim(),
+            'addressAr': _addressArController.text.trim(),
+            'addressEn': _addressEnController.text.trim(),
+          },
           'sections': sectionsPayload,
         },
       );
@@ -187,10 +214,151 @@ class _AboutManagementScreenState extends State<AboutManagementScreen> {
     _heroTitleController.dispose();
     _heroSubtitleController.dispose();
     _introController.dispose();
+    _commercialRegisterController.dispose();
+    _taxNumberController.dispose();
+    _phoneController.dispose();
+    _whatsappController.dispose();
+    _emailController.dispose();
+    _websiteController.dispose();
+    _addressArController.dispose();
+    _addressEnController.dispose();
     for (final section in _sections) {
       section.dispose();
     }
     super.dispose();
+  }
+
+  Widget _buildCompanyField({
+    required TextEditingController controller,
+    required String label,
+    String? fallback,
+    int maxLines = 1,
+    TextInputType? keyboardType,
+  }) {
+    return TextFormField(
+      controller: controller,
+      minLines: maxLines > 1 ? maxLines : null,
+      maxLines: maxLines,
+      keyboardType: keyboardType,
+      decoration: InputDecoration(
+        labelText: context.tr(label, fallback: fallback),
+        border: const OutlineInputBorder(),
+      ),
+    );
+  }
+
+  Widget _buildCompanyInfoSection() {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isWide = constraints.maxWidth >= 720;
+        final fieldWidth = isWide
+            ? (constraints.maxWidth - 12) / 2
+            : constraints.maxWidth;
+
+        Widget field({
+          required TextEditingController controller,
+          required String label,
+          String? fallback,
+          int maxLines = 1,
+          TextInputType? keyboardType,
+        }) {
+          return SizedBox(
+            width: fieldWidth,
+            child: _buildCompanyField(
+              controller: controller,
+              label: label,
+              fallback: fallback,
+              maxLines: maxLines,
+              keyboardType: keyboardType,
+            ),
+          );
+        }
+
+        return Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.white12),
+            color: Colors.white.withValues(alpha: 0.04),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                context.tr('بيانات الشركة', fallback: 'Company Info'),
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                context.tr(
+                  'هذه البيانات تظهر في قسم بيانات الشركة بالصفحة الرئيسية.',
+                  fallback:
+                      'These values appear in the company info section on the home page.',
+                ),
+                style: const TextStyle(color: Colors.white70),
+              ),
+              const SizedBox(height: 14),
+              Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: [
+                  field(
+                    controller: _commercialRegisterController,
+                    label: 'السجل التجاري',
+                    fallback: 'Commercial Register',
+                  ),
+                  field(
+                    controller: _taxNumberController,
+                    label: 'الرقم الضريبي',
+                    fallback: 'Tax Number',
+                  ),
+                  field(
+                    controller: _phoneController,
+                    label: 'الهاتف',
+                    fallback: 'Phone',
+                    keyboardType: TextInputType.phone,
+                  ),
+                  field(
+                    controller: _whatsappController,
+                    label: 'واتساب',
+                    fallback: 'WhatsApp',
+                    keyboardType: TextInputType.phone,
+                  ),
+                  field(
+                    controller: _emailController,
+                    label: 'البريد',
+                    fallback: 'Email',
+                    keyboardType: TextInputType.emailAddress,
+                  ),
+                  field(
+                    controller: _websiteController,
+                    label: 'الموقع',
+                    fallback: 'Website',
+                    keyboardType: TextInputType.url,
+                  ),
+                  field(
+                    controller: _addressArController,
+                    label: 'العنوان بالعربية',
+                    fallback: 'Arabic Address',
+                    maxLines: 3,
+                  ),
+                  field(
+                    controller: _addressEnController,
+                    label: 'العنوان بالإنجليزية',
+                    fallback: 'English Address',
+                    maxLines: 3,
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -273,6 +441,8 @@ class _AboutManagementScreenState extends State<AboutManagementScreen> {
                       border: OutlineInputBorder(),
                     ),
                   ),
+                  const SizedBox(height: 26),
+                  _buildCompanyInfoSection(),
                   const SizedBox(height: 26),
                   Row(
                     children: [

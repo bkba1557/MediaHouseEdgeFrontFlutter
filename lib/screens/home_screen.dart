@@ -17,6 +17,7 @@ import '../providers/notification_provider.dart';
 import '../providers/response_provider.dart';
 import '../providers/team_provider.dart';
 import '../config/company_info.dart';
+import '../utils/web_performance.dart';
 import '../widgets/app_network_image.dart';
 import '../widgets/auto_play_video_preview.dart';
 import '../widgets/team_member_engagement_widgets.dart';
@@ -60,6 +61,7 @@ class _HomeScreenState extends State<HomeScreen>
   int _adItemCount = 3;
   _HomeThemeMode _themeMode = _HomeThemeMode.dark;
   bool _didPrefillContactForm = false;
+  bool _isLiteWebUi = false;
   final List<_SupportChatMessage> _supportChatMessages = [
     const _SupportChatMessage(
       'أهلًا بك في دعم Media House Edge. أنا المساعد الآلي، اكتب طلبك وسأساعدك إلى أن يستلم أحد من خدمة العملاء المحادثة.',
@@ -187,7 +189,7 @@ class _HomeScreenState extends State<HomeScreen>
     _backgroundController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 20),
-    )..repeat();
+    );
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _loadMedia();
@@ -195,9 +197,27 @@ class _HomeScreenState extends State<HomeScreen>
     _startAdTimer();
   }
 
+  void _syncPerformanceMode() {
+    final nextLiteMode = isHandheldWeb(context);
+    if (nextLiteMode == _isLiteWebUi) {
+      if (!_isLiteWebUi && !_backgroundController.isAnimating) {
+        _backgroundController.repeat();
+      }
+      return;
+    }
+
+    _isLiteWebUi = nextLiteMode;
+    if (_isLiteWebUi) {
+      _backgroundController.stop();
+    } else {
+      _backgroundController.repeat();
+    }
+  }
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    _syncPerformanceMode();
     if (_didPrefillContactForm) return;
 
     final user = Provider.of<AuthProvider>(context).user;
@@ -247,6 +267,27 @@ class _HomeScreenState extends State<HomeScreen>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _adItemCount = itemCount;
     });
+  }
+
+  void _openServiceFeed(int index) {
+    final service = _services[index];
+    final serviceKey = index >= 0 && index < _serviceKeys.length
+        ? _serviceKeys[index]
+        : 'film';
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ChangeNotifierProvider(
+          create: (_) => MediaProvider(),
+          child: ServiceFeedScreen(
+            serviceKey: serviceKey,
+            serviceTitle: service.title,
+            serviceSubtitle: service.subtitle,
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> _submitContact() async {
@@ -878,6 +919,7 @@ class _HomeScreenState extends State<HomeScreen>
 
   @override
   Widget build(BuildContext context) {
+    final isMobileLayout = MediaQuery.sizeOf(context).width < 640;
     final authProvider = Provider.of<AuthProvider>(context);
     final mediaProvider = Provider.of<MediaProvider>(context);
     final teamProvider = Provider.of<TeamProvider>(context);
@@ -885,12 +927,12 @@ class _HomeScreenState extends State<HomeScreen>
     final teamMembers = teamProvider.members;
     final adMedia = mediaList
         .where((media) => media.category == 'advertisement')
-        .take(6)
+        .take(_isLiteWebUi ? 4 : 6)
         .toList();
     _syncAdItemCount(adMedia.isEmpty ? 3 : adMedia.length);
     final videoMedia = mediaList
         .where((media) => media.isVideo)
-        .take(8)
+        .take(_isLiteWebUi ? 4 : 8)
         .toList();
     final dailyStories = mediaList
         .where(
@@ -898,7 +940,7 @@ class _HomeScreenState extends State<HomeScreen>
               media.category == 'story' &&
               DateTime.now().difference(media.createdAt).inHours < 24,
         )
-        .take(12)
+        .take(_isLiteWebUi ? 8 : 12)
         .toList();
 
     return Directionality(
@@ -911,6 +953,9 @@ class _HomeScreenState extends State<HomeScreen>
         child: Scaffold(
           extendBodyBehindAppBar: true,
           backgroundColor: _pageBackground,
+          drawer: isMobileLayout
+              ? _MobileServicesDrawer(homeState: this)
+              : null,
           appBar: _buildAppBar(authProvider),
           floatingActionButton: FloatingActionButton(
             onPressed: _openSupportDialog,
@@ -945,8 +990,10 @@ class _HomeScreenState extends State<HomeScreen>
                             _buildStories(),
                             const SizedBox(height: 22),
                             _buildAdCarousel(adMedia),
-                            const SizedBox(height: 28),
-                            _buildServices(),
+                            if (!isMobileLayout) ...[
+                              const SizedBox(height: 28),
+                              _buildServices(),
+                            ],
                             const SizedBox(height: 28),
                             _buildTeamSection(
                               teamMembers,
@@ -979,33 +1026,61 @@ class _HomeScreenState extends State<HomeScreen>
 
   PreferredSizeWidget _buildAppBar(AuthProvider authProvider) {
     final screenWidth = MediaQuery.sizeOf(context).width;
+    final isMobileLayout = screenWidth < 640;
     final isWideWeb = kIsWeb && screenWidth >= 720;
     final localeCode = context.watch<LocaleProvider>().locale.languageCode;
     final unreadCount = context.watch<NotificationProvider>().unreadCount;
-    final toolbarHeight = isWideWeb ? 78.0 : 66.0;
-    final logoBadgeSize = isWideWeb ? 62.0 : 52.0;
-    final logoPadding = isWideWeb ? 2.0 : 3.0;
-    final titleFontSize = isWideWeb ? 20.0 : 17.0;
-    final titleGap = isWideWeb ? 14.0 : 12.0;
+    final toolbarHeight = isMobileLayout
+        ? 58.0
+        : isWideWeb
+        ? 78.0
+        : 66.0;
+    final logoBadgeSize = isMobileLayout
+        ? 40.0
+        : isWideWeb
+        ? 62.0
+        : 52.0;
+    final logoPadding = isMobileLayout
+        ? 2.0
+        : isWideWeb
+        ? 2.0
+        : 3.0;
+    final titleFontSize = isMobileLayout
+        ? 14.0
+        : isWideWeb
+        ? 20.0
+        : 17.0;
+    final titleGap = isMobileLayout
+        ? 8.0
+        : isWideWeb
+        ? 14.0
+        : 12.0;
 
     return AppBar(
       toolbarHeight: toolbarHeight,
       backgroundColor: Colors.transparent,
       elevation: 0,
       centerTitle: false,
-      titleSpacing: 16,
+      titleSpacing: isMobileLayout ? 8 : 16,
       flexibleSpace: ClipRect(
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-          child: Container(
-            decoration: BoxDecoration(
-              color: (_useLightTheme ? Colors.white : Colors.black).withValues(
-                alpha: 0.56,
+        child: _isLiteWebUi
+            ? Container(
+                decoration: BoxDecoration(
+                  color: (_useLightTheme ? Colors.white : Colors.black)
+                      .withValues(alpha: 0.90),
+                  border: Border(bottom: BorderSide(color: _glassBorder)),
+                ),
+              )
+            : BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: (_useLightTheme ? Colors.white : Colors.black)
+                        .withValues(alpha: 0.56),
+                    border: Border(bottom: BorderSide(color: _glassBorder)),
+                  ),
+                ),
               ),
-              border: Border(bottom: BorderSide(color: _glassBorder)),
-            ),
-          ),
-        ),
       ),
       title: Row(
         mainAxisSize: MainAxisSize.min,
@@ -1038,15 +1113,21 @@ class _HomeScreenState extends State<HomeScreen>
               child: Image.asset('assets/images/logo.png', fit: BoxFit.cover),
             ),
           ),
-          SizedBox(width: titleGap),
-          Text(
-            context.tr('Media House Edge'),
-            style: TextStyle(
-              color: _primaryText,
-              fontSize: titleFontSize,
-              fontWeight: FontWeight.w700,
+          if (!isMobileLayout) ...[
+            SizedBox(width: titleGap),
+            Flexible(
+              child: Text(
+                context.tr('Media House Edge'),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: _primaryText,
+                  fontSize: titleFontSize,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
             ),
-          ),
+          ],
         ],
       ),
       actions: [
@@ -1113,6 +1194,42 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Widget _buildAnimatedBackground() {
+    if (_isLiteWebUi) {
+      final light = _useLightTheme;
+      return Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: light
+                ? const [
+                    Color(0xFFFFFFFF),
+                    Color(0xFFFFF3F5),
+                    Color(0xFFF6F6F6),
+                  ]
+                : const [
+                    Color(0xFF060606),
+                    Color(0xFF1A0508),
+                    Color(0xFF0A0A0A),
+                  ],
+          ),
+        ),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                (light ? Colors.black : Colors.white).withValues(alpha: 0.04),
+                Colors.transparent,
+                const Color(0xFFE50914).withValues(alpha: 0.12),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     return AnimatedBuilder(
       animation: _backgroundController,
       builder: (context, child) {
@@ -1277,6 +1394,7 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Widget _buildTopStrip() {
+    final isMobileLayout = MediaQuery.sizeOf(context).width < 640;
     final title = _copy(
       'خدمات إنتاج سينمائية متكاملة',
       'Content that lands strong',
@@ -1289,8 +1407,8 @@ class _HomeScreenState extends State<HomeScreen>
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
-          width: 50,
-          height: 50,
+          width: isMobileLayout ? 38 : 50,
+          height: isMobileLayout ? 38 : 50,
           decoration: BoxDecoration(
             color: const Color(0xFFE50914),
             borderRadius: BorderRadius.circular(8),
@@ -1302,13 +1420,13 @@ class _HomeScreenState extends State<HomeScreen>
               ),
             ],
           ),
-          child: const Icon(
+          child: Icon(
             Icons.movie_creation_outlined,
             color: Colors.white,
-            size: 27,
+            size: isMobileLayout ? 21 : 27,
           ),
         ),
-        const SizedBox(width: 14),
+        SizedBox(width: isMobileLayout ? 8 : 14),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1317,19 +1435,19 @@ class _HomeScreenState extends State<HomeScreen>
                 context.tr(title),
                 style: TextStyle(
                   color: _primaryText,
-                  fontSize: 28,
+                  fontSize: isMobileLayout ? 20 : 28,
                   height: 1.15,
                   fontWeight: FontWeight.w800,
                 ),
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: isMobileLayout ? 4 : 8),
               Text(
                 context.tr(subtitle),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   color: _primaryText.withValues(alpha: 0.72),
-                  fontSize: 14,
+                  fontSize: isMobileLayout ? 11 : 14,
                   height: 1.5,
                 ),
               ),
@@ -1345,12 +1463,12 @@ class _HomeScreenState extends State<HomeScreen>
           label: _copy('دعم', 'Support'),
           icon: Icons.support_agent_outlined,
         ),
-        const SizedBox(width: 10),
+        SizedBox(width: isMobileLayout ? 6 : 10),
         _MetricTile(
           label: _copy('إخراج', 'Output'),
           icon: Icons.video_camera_back_outlined,
         ),
-        const SizedBox(width: 10),
+        SizedBox(width: isMobileLayout ? 6 : 10),
         _MetricTile(
           label: _copy('تنفيذ', 'Delivery'),
           icon: Icons.task_alt_outlined,
@@ -1430,11 +1548,11 @@ class _HomeScreenState extends State<HomeScreen>
                       ),
                     ),
                     Padding(
-                      padding: const EdgeInsetsDirectional.fromSTEB(
-                        24,
-                        20,
-                        22,
-                        20,
+                      padding: EdgeInsetsDirectional.fromSTEB(
+                        isMobileLayout ? 14 : 24,
+                        isMobileLayout ? 14 : 20,
+                        isMobileLayout ? 14 : 22,
+                        isMobileLayout ? 14 : 20,
                       ),
                       child: isWide
                           ? Row(
@@ -1449,7 +1567,7 @@ class _HomeScreenState extends State<HomeScreen>
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 titleBlock,
-                                const SizedBox(height: 18),
+                                SizedBox(height: isMobileLayout ? 12 : 18),
                                 metrics,
                               ],
                             ),
@@ -1465,36 +1583,45 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Widget _buildDailyStories(List<Media> stories) {
+    final isMobileLayout = MediaQuery.sizeOf(context).width < 640;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
-            Icon(Icons.auto_stories_outlined, color: _primaryText, size: 18),
-            const SizedBox(width: 8),
+            Icon(
+              Icons.auto_stories_outlined,
+              color: _primaryText,
+              size: isMobileLayout ? 15 : 18,
+            ),
+            SizedBox(width: isMobileLayout ? 5 : 8),
             Text(
               _copy(' الحالات الجديده ', ' '),
               style: TextStyle(
                 color: _primaryText,
-                fontSize: 15,
+                fontSize: isMobileLayout ? 12 : 15,
                 fontWeight: FontWeight.w600,
               ),
             ),
           ],
         ),
-        const SizedBox(height: 10),
+        SizedBox(height: isMobileLayout ? 6 : 10),
         if (stories.isEmpty)
           Text(
             _copy('لا توجد حالات مضافة الآن', 'No stories added yet'),
-            style: TextStyle(color: _primaryText.withValues(alpha: 0.58)),
+            style: TextStyle(
+              color: _primaryText.withValues(alpha: 0.58),
+              fontSize: isMobileLayout ? 11 : null,
+            ),
           )
         else
           SizedBox(
-            height: 94,
+            height: isMobileLayout ? 78 : 94,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               itemCount: stories.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 14),
+              separatorBuilder: (_, __) =>
+                  SizedBox(width: isMobileLayout ? 8 : 14),
               itemBuilder: (context, index) {
                 final media = stories[index];
                 return _DailyStoryCircle(
@@ -1521,14 +1648,15 @@ class _HomeScreenState extends State<HomeScreen>
 
   Widget _buildStories() {
     final isLight = _useLightTheme;
+    final isMobileLayout = MediaQuery.sizeOf(context).width < 640;
 
     return SizedBox(
-      height: 114,
+      height: isMobileLayout ? 90 : 114,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsetsDirectional.only(start: 4, end: 4),
         itemCount: _categories.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 12),
+        separatorBuilder: (_, __) => SizedBox(width: isMobileLayout ? 6 : 12),
         itemBuilder: (context, index) {
           final category = _categories[index];
           final isSelected = _selectedCategory == category.value;
@@ -1546,10 +1674,10 @@ class _HomeScreenState extends State<HomeScreen>
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 220),
                 curve: Curves.easeOutCubic,
-                width: 96,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 8,
-                  vertical: 10,
+                width: isMobileLayout ? 76 : 96,
+                padding: EdgeInsets.symmetric(
+                  horizontal: isMobileLayout ? 5 : 8,
+                  vertical: isMobileLayout ? 7 : 10,
                 ),
                 decoration: BoxDecoration(
                   color: isSelected
@@ -1581,8 +1709,8 @@ class _HomeScreenState extends State<HomeScreen>
                   children: [
                     AnimatedContainer(
                       duration: const Duration(milliseconds: 220),
-                      width: 50,
-                      height: 50,
+                      width: isMobileLayout ? 38 : 50,
+                      height: isMobileLayout ? 38 : 50,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         color: isSelected
@@ -1599,10 +1727,10 @@ class _HomeScreenState extends State<HomeScreen>
                       child: Icon(
                         category.icon,
                         color: isSelected ? Colors.white : _primaryText,
-                        size: 24,
+                        size: isMobileLayout ? 18 : 24,
                       ),
                     ),
-                    const SizedBox(height: 10),
+                    SizedBox(height: isMobileLayout ? 6 : 10),
                     Text(
                       _copy(category.labelAr, category.labelEn),
                       textAlign: TextAlign.center,
@@ -1610,7 +1738,7 @@ class _HomeScreenState extends State<HomeScreen>
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         color: _primaryText,
-                        fontSize: 12,
+                        fontSize: isMobileLayout ? 10 : 12,
                         fontWeight: isSelected
                             ? FontWeight.w700
                             : FontWeight.w600,
@@ -1630,6 +1758,7 @@ class _HomeScreenState extends State<HomeScreen>
   Widget _buildAdCarousel(List<Media> adMedia) {
     final itemCount = adMedia.isEmpty ? 3 : adMedia.length;
     final isLight = _useLightTheme;
+    final isMobileLayout = MediaQuery.sizeOf(context).width < 640;
     final badgeLabel = _copy(
       adMedia.isEmpty ? 'معرض إعلاني' : '${adMedia.length} إعلان',
       adMedia.isEmpty ? 'Ad Showcase' : '${adMedia.length} Ads',
@@ -1643,7 +1772,12 @@ class _HomeScreenState extends State<HomeScreen>
           children: [
             const Expanded(child: _SectionTitle('إعلانات', 'اسحب للتصفح')),
             Container(
-              padding: const EdgeInsetsDirectional.fromSTEB(12, 8, 12, 8),
+              padding: EdgeInsetsDirectional.fromSTEB(
+                isMobileLayout ? 8 : 12,
+                isMobileLayout ? 5 : 8,
+                isMobileLayout ? 8 : 12,
+                isMobileLayout ? 5 : 8,
+              ),
               decoration: BoxDecoration(
                 color: isLight
                     ? Colors.black.withValues(alpha: 0.05)
@@ -1655,25 +1789,25 @@ class _HomeScreenState extends State<HomeScreen>
                 badgeLabel,
                 style: TextStyle(
                   color: _primaryText.withValues(alpha: 0.82),
-                  fontSize: 11,
+                  fontSize: isMobileLayout ? 9 : 11,
                   fontWeight: FontWeight.w700,
                 ),
               ),
             ),
           ],
         ),
-        const SizedBox(height: 14),
+        SizedBox(height: isMobileLayout ? 10 : 14),
         Container(
-          padding: const EdgeInsets.all(10),
+          padding: EdgeInsets.all(isMobileLayout ? 6 : 10),
           decoration: BoxDecoration(
             color: isLight
                 ? Colors.black.withValues(alpha: 0.025)
                 : Colors.white.withValues(alpha: 0.04),
-            borderRadius: BorderRadius.circular(24),
+            borderRadius: BorderRadius.circular(isMobileLayout ? 18 : 24),
             border: Border.all(color: _glassBorder),
           ),
           child: SizedBox(
-            height: 236,
+            height: isMobileLayout ? 168 : 236,
             child: adMedia.length == 1
                 ? _AdBanner(media: adMedia.first, index: 0)
                 : Directionality(
@@ -1723,27 +1857,9 @@ class _HomeScreenState extends State<HomeScreen>
                 childAspectRatio: ratio,
               ),
               itemBuilder: (context, index) {
-                final service = _services[index];
-                final serviceKey = index >= 0 && index < _serviceKeys.length
-                    ? _serviceKeys[index]
-                    : 'film';
                 return _ServiceCard(
-                  service: service,
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => ChangeNotifierProvider(
-                          create: (_) => MediaProvider(),
-                          child: ServiceFeedScreen(
-                            serviceKey: serviceKey,
-                            serviceTitle: service.title,
-                            serviceSubtitle: service.subtitle,
-                          ),
-                        ),
-                      ),
-                    );
-                  },
+                  service: _services[index],
+                  onTap: () => _openServiceFeed(index),
                 );
               },
             );
@@ -1989,7 +2105,7 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Widget _buildPortfolio(List<Media> mediaList, bool isLoading) {
-    final selectedMedia = mediaList.take(8).toList();
+    final selectedMedia = mediaList.take(_isLiteWebUi ? 4 : 8).toList();
     final railHeight = MediaQuery.sizeOf(context).width < 600 ? 198.0 : 208.0;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -2094,6 +2210,7 @@ class _HomeScreenState extends State<HomeScreen>
 
   Widget _buildFooter() {
     final isLight = _useLightTheme;
+    final companyProfile = context.watch<AboutProvider>().page.companyProfile;
     final valueStyle = TextStyle(
       color: isLight ? Colors.black87 : Colors.white.withValues(alpha: 0.86),
       fontSize: 12,
@@ -2165,21 +2282,21 @@ class _HomeScreenState extends State<HomeScreen>
             builder: (context, constraints) {
               final isWide = constraints.maxWidth > 880;
               final companyAddress = _copy(
-                CompanyInfo.addressAr,
-                CompanyInfo.addressEn,
+                companyProfile.addressAr,
+                companyProfile.addressEn,
               );
               final items = <Widget>[
-                if (hasReviewSafeValue(CompanyInfo.commercialRegister))
+                if (hasReviewSafeValue(companyProfile.commercialRegister))
                   item(
                     Icons.badge_outlined,
                     _copy('السجل التجاري', 'Commercial register'),
-                    CompanyInfo.commercialRegister,
+                    companyProfile.commercialRegister,
                   ),
-                if (hasReviewSafeValue(CompanyInfo.taxNumber))
+                if (hasReviewSafeValue(companyProfile.taxNumber))
                   item(
                     Icons.verified_outlined,
                     _copy('الرقم الضريبي', 'Tax number'),
-                    CompanyInfo.taxNumber,
+                    companyProfile.taxNumber,
                   ),
                 if (hasReviewSafeValue(companyAddress))
                   item(
@@ -2187,29 +2304,29 @@ class _HomeScreenState extends State<HomeScreen>
                     _copy('العنوان', 'Address'),
                     companyAddress,
                   ),
-                if (hasReviewSafeValue(CompanyInfo.phone))
+                if (hasReviewSafeValue(companyProfile.phone))
                   item(
                     Icons.phone_outlined,
                     _copy('الهاتف', 'Phone'),
-                    CompanyInfo.phone,
+                    companyProfile.phone,
                   ),
-                if (hasReviewSafeValue(CompanyInfo.email))
+                if (hasReviewSafeValue(companyProfile.email))
                   item(
                     Icons.email_outlined,
                     _copy('البريد', 'Email'),
-                    CompanyInfo.email,
+                    companyProfile.email,
                   ),
-                if (hasReviewSafeValue(CompanyInfo.website))
+                if (hasReviewSafeValue(companyProfile.website))
                   item(
                     Icons.public_outlined,
                     _copy('الموقع', 'Website'),
-                    CompanyInfo.website,
+                    companyProfile.website,
                   ),
-                if (hasReviewSafeValue(CompanyInfo.whatsapp))
+                if (hasReviewSafeValue(companyProfile.whatsapp))
                   item(
                     Icons.chat_outlined,
                     _copy('واتساب', 'WhatsApp'),
-                    CompanyInfo.whatsapp,
+                    companyProfile.whatsapp,
                   ),
               ];
 
@@ -2524,28 +2641,32 @@ class _GlassPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isLight = Theme.of(context).brightness == Brightness.light;
+    final liteWebUi = isHandheldWeb(context);
+    final panel = Container(
+      padding: padding,
+      decoration: BoxDecoration(
+        color: isLight
+            ? Colors.white.withValues(alpha: liteWebUi ? 0.84 : 0.72)
+            : Colors.white.withValues(alpha: liteWebUi ? 0.10 : 0.075),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: isLight
+              ? Colors.black.withValues(alpha: 0.10)
+              : Colors.white.withValues(alpha: 0.12),
+        ),
+      ),
+      child: child,
+    );
     return Container(
       margin: margin,
       child: ClipRRect(
         borderRadius: BorderRadius.circular(8),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
-          child: Container(
-            padding: padding,
-            decoration: BoxDecoration(
-              color: isLight
-                  ? Colors.white.withValues(alpha: 0.72)
-                  : Colors.white.withValues(alpha: 0.075),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                color: isLight
-                    ? Colors.black.withValues(alpha: 0.10)
-                    : Colors.white.withValues(alpha: 0.12),
+        child: liteWebUi
+            ? panel
+            : BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+                child: panel,
               ),
-            ),
-            child: child,
-          ),
-        ),
       ),
     );
   }
@@ -2569,22 +2690,23 @@ class _AppIconButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isLight = Theme.of(context).brightness == Brightness.light;
+    final isMobileLayout = MediaQuery.sizeOf(context).width < 640;
     final foreground = isLight ? Colors.black87 : Colors.white;
 
     return Tooltip(
       message: tooltip,
       child: Padding(
-        padding: const EdgeInsetsDirectional.only(end: 8),
+        padding: EdgeInsetsDirectional.only(end: isMobileLayout ? 4 : 8),
         child: Material(
           color: Colors.transparent,
           child: InkWell(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(isMobileLayout ? 11 : 14),
             onTap: onPressed,
             child: Ink(
-              width: 40,
-              height: 40,
+              width: isMobileLayout ? 34 : 40,
+              height: isMobileLayout ? 34 : 40,
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(isMobileLayout ? 11 : 14),
                 color: isActive
                     ? const Color(0xFFE50914).withValues(alpha: 0.18)
                     : (isLight ? Colors.white : Colors.black).withValues(
@@ -2598,8 +2720,8 @@ class _AppIconButton extends StatelessWidget {
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withValues(alpha: 0.14),
-                    blurRadius: 14,
-                    offset: const Offset(0, 8),
+                    blurRadius: isMobileLayout ? 8 : 14,
+                    offset: Offset(0, isMobileLayout ? 5 : 8),
                   ),
                 ],
               ),
@@ -2611,20 +2733,22 @@ class _AppIconButton extends StatelessWidget {
                       child: Icon(
                         icon,
                         color: isActive ? const Color(0xFFE50914) : foreground,
-                        size: 20,
+                        size: isMobileLayout ? 17 : 20,
                       ),
                     ),
                   ),
                   if (badgeCount > 0)
                     Positioned(
-                      top: -4,
-                      right: -4,
+                      top: isMobileLayout ? -2 : -4,
+                      right: isMobileLayout ? -2 : -4,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 5,
-                          vertical: 2,
+                        padding: EdgeInsets.symmetric(
+                          horizontal: isMobileLayout ? 3.5 : 5,
+                          vertical: isMobileLayout ? 1 : 2,
                         ),
-                        constraints: const BoxConstraints(minWidth: 18),
+                        constraints: BoxConstraints(
+                          minWidth: isMobileLayout ? 14 : 18,
+                        ),
                         decoration: BoxDecoration(
                           color: const Color(0xFFE50914),
                           borderRadius: BorderRadius.circular(999),
@@ -2633,9 +2757,9 @@ class _AppIconButton extends StatelessWidget {
                         child: Text(
                           badgeCount > 99 ? '99+' : '$badgeCount',
                           textAlign: TextAlign.center,
-                          style: const TextStyle(
+                          style: TextStyle(
                             color: Colors.white,
-                            fontSize: 10,
+                            fontSize: isMobileLayout ? 8 : 10,
                             fontWeight: FontWeight.w800,
                           ),
                         ),
@@ -2812,6 +2936,8 @@ class _DailyStoryCircle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isMobileLayout = MediaQuery.sizeOf(context).width < 640;
+
     Widget fallback() {
       return DecoratedBox(
         decoration: BoxDecoration(
@@ -2829,26 +2955,29 @@ class _DailyStoryCircle extends StatelessWidget {
           child: Icon(
             icon,
             color: Colors.white.withValues(alpha: 0.92),
-            size: 26,
+            size: isMobileLayout ? 20 : 26,
           ),
         ),
       );
     }
 
     return InkWell(
-      borderRadius: BorderRadius.circular(48),
+      borderRadius: BorderRadius.circular(isMobileLayout ? 40 : 48),
       onTap: onTap,
       child: SizedBox(
-        width: 78,
+        width: isMobileLayout ? 64 : 78,
         child: Column(
           children: [
             Container(
-              width: 64,
-              height: 64,
-              padding: const EdgeInsets.all(3),
+              width: isMobileLayout ? 52 : 64,
+              height: isMobileLayout ? 52 : 64,
+              padding: EdgeInsets.all(isMobileLayout ? 2 : 3),
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                border: Border.all(color: borderColor, width: 2.6),
+                border: Border.all(
+                  color: borderColor,
+                  width: isMobileLayout ? 2.1 : 2.6,
+                ),
               ),
               child: ClipOval(
                 child: imageUrl == null
@@ -2867,25 +2996,32 @@ class _DailyStoryCircle extends StatelessWidget {
                           Align(
                             alignment: Alignment.bottomRight,
                             child: Container(
-                              width: 22,
-                              height: 22,
+                              width: isMobileLayout ? 18 : 22,
+                              height: isMobileLayout ? 18 : 22,
                               decoration: const BoxDecoration(
                                 color: Color(0xFFE50914),
                                 shape: BoxShape.circle,
                               ),
-                              child: Icon(icon, color: Colors.white, size: 14),
+                              child: Icon(
+                                icon,
+                                color: Colors.white,
+                                size: isMobileLayout ? 11 : 14,
+                              ),
                             ),
                           ),
                         ],
                       ),
               ),
             ),
-            const SizedBox(height: 7),
+            SizedBox(height: isMobileLayout ? 5 : 7),
             Text(
               label,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(color: textColor, fontSize: 12),
+              style: TextStyle(
+                color: textColor,
+                fontSize: isMobileLayout ? 10 : 12,
+              ),
             ),
           ],
         ),
@@ -2904,14 +3040,18 @@ class _MetricTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isLight = Theme.of(context).brightness == Brightness.light;
+    final isMobileLayout = MediaQuery.sizeOf(context).width < 640;
     final titleColor = isLight ? Colors.black : Colors.white;
     final subtleColor = isLight ? Colors.black54 : Colors.white70;
     const accentColor = Color(0xFFE50914);
 
     return Expanded(
       child: Container(
-        height: 76,
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+        height: isMobileLayout ? 62 : 76,
+        padding: EdgeInsets.symmetric(
+          horizontal: isMobileLayout ? 7 : 10,
+          vertical: isMobileLayout ? 7 : 9,
+        ),
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
@@ -2937,7 +3077,7 @@ class _MetricTile extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             SizedBox(
-              height: 27,
+              height: isMobileLayout ? 22 : 27,
               child: Center(
                 child: (value != null && value!.isNotEmpty)
                     ? FittedBox(
@@ -2945,30 +3085,38 @@ class _MetricTile extends StatelessWidget {
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(icon, color: accentColor, size: 17),
-                            const SizedBox(width: 6),
+                            Icon(
+                              icon,
+                              color: accentColor,
+                              size: isMobileLayout ? 14 : 17,
+                            ),
+                            SizedBox(width: isMobileLayout ? 4 : 6),
                             Text(
                               value!,
                               style: TextStyle(
                                 color: titleColor,
-                                fontSize: 18,
+                                fontSize: isMobileLayout ? 15 : 18,
                                 fontWeight: FontWeight.w800,
                               ),
                             ),
                           ],
                         ),
                       )
-                    : Icon(icon, color: accentColor, size: 25),
+                    : Icon(
+                        icon,
+                        color: accentColor,
+                        size: isMobileLayout ? 20 : 25,
+                      ),
               ),
             ),
-            const SizedBox(height: 7),
+            SizedBox(height: isMobileLayout ? 5 : 7),
             Text(
               label,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 color: subtleColor,
-                fontSize: 12,
+                fontSize: isMobileLayout ? 10 : 12,
                 fontWeight: FontWeight.w700,
               ),
             ),
@@ -2988,12 +3136,17 @@ class _SectionTitle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isLight = Theme.of(context).brightness == Brightness.light;
+    final isMobileLayout = MediaQuery.sizeOf(context).width < 640;
     final titleColor = isLight ? Colors.black : Colors.white;
     final subtitleColor = isLight ? Colors.black54 : Colors.white60;
     return Row(
       children: [
-        Container(width: 4, height: 30, color: const Color(0xFFE50914)),
-        const SizedBox(width: 10),
+        Container(
+          width: isMobileLayout ? 3 : 4,
+          height: isMobileLayout ? 24 : 30,
+          color: const Color(0xFFE50914),
+        ),
+        SizedBox(width: isMobileLayout ? 7 : 10),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -3002,13 +3155,16 @@ class _SectionTitle extends StatelessWidget {
                 title,
                 style: TextStyle(
                   color: titleColor,
-                  fontSize: 20,
+                  fontSize: isMobileLayout ? 16 : 20,
                   fontWeight: FontWeight.w700,
                 ),
               ),
               Text(
                 subtitle,
-                style: TextStyle(color: subtitleColor, fontSize: 12),
+                style: TextStyle(
+                  color: subtitleColor,
+                  fontSize: isMobileLayout ? 10 : 12,
+                ),
               ),
             ],
           ),
@@ -3026,103 +3182,123 @@ class _AdBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isMobileLayout = MediaQuery.sizeOf(context).width < 640;
+    final canOpenDetails = media != null;
+
     return Directionality(
       textDirection: TextDirection.ltr,
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 6),
-        width: double.infinity,
-        height: double.infinity,
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(8),
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              _fallbackBackground(),
+      child: GestureDetector(
+        onTap: canOpenDetails
+            ? () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => MediaDetailScreen(media: media!),
+                  ),
+                );
+              }
+            : null,
+        child: Container(
+          margin: EdgeInsets.symmetric(horizontal: isMobileLayout ? 3 : 6),
+          width: double.infinity,
+          height: double.infinity,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(isMobileLayout ? 5 : 8),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                _fallbackBackground(),
 
-              if (media?.isVideo == true)
-                Positioned.fill(
-                  child: IgnorePointer(
-                    child: AutoPlayVideoPreview(
-                      url: Uri.parse(media!.url),
+                if (media?.isVideo == true)
+                  Positioned.fill(
+                    child: IgnorePointer(
+                      child: AutoPlayVideoPreview(
+                        url: Uri.parse(media!.url),
+                        fit: BoxFit.cover,
+                        placeholder: media!.previewImageUrl != null
+                            ? AppNetworkImage(
+                                url: media!.previewImageUrl!,
+                                fit: BoxFit.cover,
+                                width: double.infinity,
+                                height: double.infinity,
+                                placeholder: _fallbackBackground(),
+                                errorWidget: _fallbackBackground(),
+                              )
+                            : _fallbackBackground(),
+                        errorWidget: media!.previewImageUrl != null
+                            ? AppNetworkImage(
+                                url: media!.previewImageUrl!,
+                                fit: BoxFit.cover,
+                                width: double.infinity,
+                                height: double.infinity,
+                                placeholder: _fallbackBackground(),
+                                errorWidget: _fallbackBackground(),
+                              )
+                            : _fallbackBackground(),
+                      ),
+                    ),
+                  )
+                else if (media?.previewImageUrl != null)
+                  Positioned.fill(
+                    child: AppNetworkImage(
+                      url: media!.previewImageUrl!,
                       fit: BoxFit.cover,
-                      placeholder: media!.previewImageUrl != null
-                          ? AppNetworkImage(
-                              url: media!.previewImageUrl!,
-                              fit: BoxFit.cover,
-                              width: double.infinity,
-                              height: double.infinity,
-                              placeholder: _fallbackBackground(),
-                              errorWidget: _fallbackBackground(),
-                            )
-                          : _fallbackBackground(),
-                      errorWidget: media!.previewImageUrl != null
-                          ? AppNetworkImage(
-                              url: media!.previewImageUrl!,
-                              fit: BoxFit.cover,
-                              width: double.infinity,
-                              height: double.infinity,
-                              placeholder: _fallbackBackground(),
-                              errorWidget: _fallbackBackground(),
-                            )
-                          : _fallbackBackground(),
+                      width: double.infinity,
+                      height: double.infinity,
+                      placeholder: _fallbackBackground(),
+                      errorWidget: _fallbackBackground(),
                     ),
                   ),
-                )
-              else if (media?.previewImageUrl != null)
-                Positioned.fill(
-                  child: AppNetworkImage(
-                    url: media!.previewImageUrl!,
-                    fit: BoxFit.cover,
-                    width: double.infinity,
-                    height: double.infinity,
-                    placeholder: _fallbackBackground(),
-                    errorWidget: _fallbackBackground(),
+
+                const DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.transparent,
+                        Color.fromRGBO(0, 0, 0, 0.84),
+                      ],
+                    ),
                   ),
                 ),
 
-              const DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [Colors.transparent, Color.fromRGBO(0, 0, 0, 0.84)],
+                Positioned(
+                  left: isMobileLayout ? 12 : 18,
+                  right: isMobileLayout ? 12 : 18,
+                  bottom: isMobileLayout ? 12 : 18,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        media?.title ??
+                            _fallbackTitles[index % _fallbackTitles.length],
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.right,
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: isMobileLayout ? 17 : 24,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      SizedBox(height: isMobileLayout ? 3 : 6),
+                      Text(
+                        media?.description ??
+                            'إعلان متحرك بهوية بصرية سينمائية ولمسات عرض حديثة.',
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.right,
+                        style: TextStyle(
+                          color: Colors.white70,
+                          fontSize: isMobileLayout ? 10.5 : 13,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ),
-
-              Positioned(
-                left: 18,
-                right: 18,
-                bottom: 18,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      media?.title ??
-                          _fallbackTitles[index % _fallbackTitles.length],
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 24,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      media?.description ??
-                          'إعلان متحرك بهوية بصرية سينمائية ولمسات عرض حديثة.',
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontSize: 13,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -3158,6 +3334,91 @@ class _ServiceCard extends StatefulWidget {
   State<_ServiceCard> createState() => _ServiceCardState();
 }
 
+class _MobileServicesDrawer extends StatelessWidget {
+  final _HomeScreenState homeState;
+
+  const _MobileServicesDrawer({required this.homeState});
+
+  @override
+  Widget build(BuildContext context) {
+    final isLight = Theme.of(context).brightness == Brightness.light;
+    final foreground = isLight ? Colors.black : Colors.white;
+    final subtitle = isLight ? Colors.black54 : Colors.white70;
+
+    return Drawer(
+      backgroundColor: isLight
+          ? const Color(0xFFF8F8F8)
+          : const Color(0xFF101010),
+      child: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    context.tr('الخدمات'),
+                    style: TextStyle(
+                      color: foreground,
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    context.tr('اختر الخدمة وافتح معرضها مباشرة'),
+                    style: TextStyle(color: subtitle, fontSize: 13),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            Expanded(
+              child: ListView.separated(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                itemCount: homeState._services.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 2),
+                itemBuilder: (context, index) {
+                  final service = homeState._services[index];
+                  return ListTile(
+                    leading: CircleAvatar(
+                      radius: 20,
+                      backgroundColor: const Color(
+                        0xFFE50914,
+                      ).withValues(alpha: 0.14),
+                      child: Icon(service.icon, color: const Color(0xFFE50914)),
+                    ),
+                    title: Text(
+                      context.tr(service.title),
+                      style: TextStyle(
+                        color: foreground,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    subtitle: Text(
+                      context.tr(service.subtitle),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(color: subtitle, fontSize: 12),
+                    ),
+                    trailing: const Icon(Icons.chevron_right_rounded),
+                    onTap: () {
+                      Navigator.of(context).pop();
+                      homeState._openServiceFeed(index);
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _ServiceCardState extends State<_ServiceCard> {
   bool _isHovered = false;
 
@@ -3165,6 +3426,7 @@ class _ServiceCardState extends State<_ServiceCard> {
   Widget build(BuildContext context) {
     final isLight = Theme.of(context).brightness == Brightness.light;
     final isRtl = Directionality.of(context) == TextDirection.rtl;
+    final liteWebUi = isHandheldWeb(context);
     final titleColor = isLight ? Colors.black : Colors.white;
     final subtitleColor = isLight ? Colors.black54 : Colors.white70;
     const accentColor = Color(0xFFE50914);
@@ -3189,7 +3451,10 @@ class _ServiceCardState extends State<_ServiceCard> {
         child: ClipRRect(
           borderRadius: BorderRadius.circular(8),
           child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+            filter: ImageFilter.blur(
+              sigmaX: liteWebUi ? 0.01 : 14,
+              sigmaY: liteWebUi ? 0.01 : 14,
+            ),
             child: Material(
               color: Colors.transparent,
               child: InkWell(
@@ -3197,8 +3462,12 @@ class _ServiceCardState extends State<_ServiceCard> {
                 child: Ink(
                   decoration: BoxDecoration(
                     color: isLight
-                        ? Colors.white.withValues(alpha: 0.76)
-                        : const Color(0xFF241015).withValues(alpha: 0.78),
+                        ? Colors.white.withValues(
+                            alpha: liteWebUi ? 0.86 : 0.76,
+                          )
+                        : const Color(
+                            0xFF241015,
+                          ).withValues(alpha: liteWebUi ? 0.88 : 0.78),
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
                       color: _isHovered

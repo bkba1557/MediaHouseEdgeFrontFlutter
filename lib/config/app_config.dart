@@ -1,11 +1,11 @@
 class AppConfig {
-  // static const String _rawApiBaseUrl = String.fromEnvironment(
-  //   'API_BASE_URL',
-  //   defaultValue: 'http://127.0.0.1:6019/api',
-  // );
+  static const bool _isRelease = bool.fromEnvironment('dart.vm.product');
+
   static const String _rawApiBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'https://api.mediahouseedge.com/api',
+    defaultValue: _isRelease
+        ? 'https://api.mediahouseedge.com/api'
+        : 'http://127.0.0.1:6019/api',
   );
 
   static String get apiBaseUrl {

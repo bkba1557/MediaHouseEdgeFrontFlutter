@@ -20,6 +20,7 @@ dependencies:
   video_player: ^2.7.2
   chewie: ^1.8.5
   cached_network_image: ^3.3.0
+  visibility_detector: ^0.4.0+2
   flutter_svg: ^2.1.0
   shimmer: ^3.0.0
   flutter_rating_bar: ^4.0.1

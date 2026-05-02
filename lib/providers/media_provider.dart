@@ -39,6 +39,46 @@ class MediaProvider with ChangeNotifier {
         .toList(growable: false);
   }
 
+  Future<List<MediaFolder>> reorderFolders({
+    required String category,
+    required List<MediaFolder> folders,
+    required String token,
+  }) async {
+    final response = await http.patch(
+      Uri.parse('$_baseUrl/media/folders/reorder'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: json.encode({
+        'category': category,
+        'folders': folders
+            .map(
+              (folder) => {
+                'collectionKey': folder.collectionKey,
+                'collectionTitle': folder.collectionTitle,
+              },
+            )
+            .toList(growable: false),
+      }),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception(
+        _extractError(response.body, 'Failed to update folder order'),
+      );
+    }
+
+    final decoded = json.decode(response.body);
+    final data = decoded is Map<String, dynamic> ? decoded['folders'] : null;
+    if (data is! List) return const [];
+
+    return data
+        .whereType<Map<String, dynamic>>()
+        .map(MediaFolder.fromJson)
+        .toList(growable: false);
+  }
+
   Future<void> fetchMedia({String? type, String? category}) async {
     _isLoading = true;
     _error = null;
@@ -68,6 +108,28 @@ class MediaProvider with ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     }
+  }
+
+  Future<Media> fetchMediaById(String id) async {
+    final response = await http.get(Uri.parse('$_baseUrl/media/$id'));
+
+    if (response.statusCode != 200) {
+      throw Exception(_extractError(response.body, 'Failed to load media'));
+    }
+
+    final decoded = json.decode(response.body);
+    if (decoded is! Map<String, dynamic>) {
+      throw Exception('Invalid media response');
+    }
+
+    final media = Media.fromJson(decoded);
+    final index = _mediaList.indexWhere((item) => item.id == id);
+    if (index != -1) {
+      _mediaList[index] = media;
+      notifyListeners();
+    }
+
+    return media;
   }
 
   Future<void> uploadMedia({
@@ -237,10 +299,126 @@ class MediaProvider with ChangeNotifier {
     int? sequence,
     bool clearCollectionFields = false,
     bool clearSequence = false,
+    bool clearThumbnail = false,
+  }) async {
+    await _patchMedia(
+      id: id,
+      token: token,
+      title: title,
+      description: description,
+      type: type,
+      category: category,
+      url: url,
+      thumbnail: thumbnail,
+      collectionKey: collectionKey,
+      collectionTitle: collectionTitle,
+      sequence: sequence,
+      clearCollectionFields: clearCollectionFields,
+      clearSequence: clearSequence,
+      clearThumbnail: clearThumbnail,
+    );
+  }
+
+  Future<void> updateMedia({
+    required String id,
+    required String token,
+    required String title,
+    required String description,
+    required String type,
+    required String category,
+    XFile? replacementFile,
+    XFile? replacementCoverFile,
+    String? collectionKey,
+    String? collectionTitle,
+    int? sequence,
+    bool clearCollectionFields = false,
+    bool clearSequence = false,
+    bool clearThumbnail = false,
   }) async {
     _isLoading = true;
     _error = null;
     notifyListeners();
+
+    try {
+      String? nextUrl;
+      String? nextThumbnail;
+
+      if (replacementFile != null) {
+        nextUrl = await _uploadFileToFirebase(
+          file: replacementFile,
+          type: type,
+          category: category,
+        );
+      }
+
+      if (replacementCoverFile != null) {
+        nextThumbnail = await _uploadFileToFirebase(
+          file: replacementCoverFile,
+          type: 'image',
+          category: category,
+          subfolder: 'covers',
+        );
+      }
+
+      await _patchMedia(
+        id: id,
+        token: token,
+        title: title,
+        description: description,
+        type: type,
+        category: category,
+        url: nextUrl,
+        thumbnail: nextThumbnail,
+        collectionKey: collectionKey,
+        collectionTitle: collectionTitle,
+        sequence: sequence,
+        clearCollectionFields: clearCollectionFields,
+        clearSequence: clearSequence,
+        clearThumbnail: clearThumbnail,
+        manageLoading: false,
+      );
+    } catch (e) {
+      _error = e.toString();
+      rethrow;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  String _extractError(String body, String fallback) {
+    try {
+      final data = json.decode(body);
+      if (data is Map<String, dynamic>) {
+        final message = data['message'];
+        if (message is String && message.isNotEmpty) return message;
+      }
+    } catch (_) {}
+    return fallback;
+  }
+
+  Future<void> _patchMedia({
+    required String id,
+    required String token,
+    required String title,
+    required String description,
+    required String type,
+    required String category,
+    String? url,
+    String? thumbnail,
+    String? collectionKey,
+    String? collectionTitle,
+    int? sequence,
+    bool clearCollectionFields = false,
+    bool clearSequence = false,
+    bool clearThumbnail = false,
+    bool manageLoading = true,
+  }) async {
+    if (manageLoading) {
+      _isLoading = true;
+      _error = null;
+      notifyListeners();
+    }
 
     try {
       final body = <String, dynamic>{
@@ -250,7 +428,7 @@ class MediaProvider with ChangeNotifier {
         'category': category,
       };
       if (url != null) body['url'] = url;
-      if (thumbnail != null) body['thumbnail'] = thumbnail;
+      if (thumbnail != null || clearThumbnail) body['thumbnail'] = thumbnail;
       if (collectionKey != null || clearCollectionFields) {
         body['collectionKey'] = collectionKey;
       }
@@ -290,19 +468,10 @@ class MediaProvider with ChangeNotifier {
       _error = e.toString();
       rethrow;
     } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
-  }
-
-  String _extractError(String body, String fallback) {
-    try {
-      final data = json.decode(body);
-      if (data is Map<String, dynamic>) {
-        final message = data['message'];
-        if (message is String && message.isNotEmpty) return message;
+      if (manageLoading) {
+        _isLoading = false;
+        notifyListeners();
       }
-    } catch (_) {}
-    return fallback;
+    }
   }
 }

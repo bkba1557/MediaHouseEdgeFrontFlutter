@@ -241,6 +241,7 @@ class _UploadMediaScreenState extends State<UploadMediaScreen> {
         merged[key] = ServiceFolderOption(
           collectionKey: key,
           collectionTitle: title,
+          sortOrder: folder.sortOrder,
         );
       }
     } catch (_) {}
@@ -248,7 +249,7 @@ class _UploadMediaScreenState extends State<UploadMediaScreen> {
     if (!mounted) return;
 
     final options = merged.values.toList(growable: false)
-      ..sort((a, b) => a.collectionTitle.compareTo(b.collectionTitle));
+      ..sort(compareFolderOptions);
 
     setState(() {
       _folderOptions = options;

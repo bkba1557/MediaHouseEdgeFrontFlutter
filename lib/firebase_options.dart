@@ -22,7 +22,7 @@ class AppFirebaseOptions {
   );
   static const iosAppId = String.fromEnvironment(
     'FIREBASE_IOS_APP_ID',
-    defaultValue: appId,
+    defaultValue: '1:843078322062:ios:3075e6b24734a7c2b686df',
   );
   static const messagingSenderId = String.fromEnvironment(
     'FIREBASE_MESSAGING_SENDER_ID',
@@ -44,7 +44,10 @@ class AppFirebaseOptions {
     'FIREBASE_MEASUREMENT_ID',
     defaultValue: 'G-PXKW92DMB2',
   );
-  static const iosBundleId = String.fromEnvironment('FIREBASE_IOS_BUNDLE_ID');
+  static const iosBundleId = String.fromEnvironment(
+    'FIREBASE_IOS_BUNDLE_ID',
+    defaultValue: 'com.mediahouse.edge',
+  );
   static const webVapidKey = String.fromEnvironment('FIREBASE_WEB_VAPID_KEY');
 
   static bool get isConfigured {

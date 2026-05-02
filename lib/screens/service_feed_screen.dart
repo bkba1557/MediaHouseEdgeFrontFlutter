@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../config/service_folder_config.dart';
 import '../models/media.dart';
+import '../models/media_folder.dart';
 import '../providers/media_provider.dart';
 import '../widgets/app_network_image.dart';
 import '../widgets/auto_play_video_preview.dart';
@@ -32,6 +33,7 @@ class ServiceFeedScreen extends StatefulWidget {
 
 class _ServiceFeedScreenState extends State<ServiceFeedScreen> {
   _ServiceFeedFilter _filter = _ServiceFeedFilter.all;
+  List<MediaFolder> _folderMetadata = const [];
 
   @override
   void initState() {
@@ -47,6 +49,17 @@ class _ServiceFeedScreenState extends State<ServiceFeedScreen> {
       _ServiceFeedFilter.all => null,
     };
     await mediaProvider.fetchMedia(category: widget.serviceKey, type: type);
+
+    try {
+      final folders = await mediaProvider.fetchFolders(
+        category: widget.serviceKey,
+      );
+      if (!mounted) return;
+      setState(() => _folderMetadata = folders);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _folderMetadata = const []);
+    }
   }
 
   Future<void> _openRequestSheet() async {
@@ -58,6 +71,7 @@ class _ServiceFeedScreenState extends State<ServiceFeedScreen> {
   }
 
   bool _usesFolders(List<Media> items) {
+    if (_folderMetadata.isNotEmpty) return true;
     if (serviceCategoryRequiresFolder(widget.serviceKey)) return true;
     if (defaultFoldersForCategory(widget.serviceKey).isNotEmpty) return true;
     return items.any((item) {
@@ -70,10 +84,23 @@ class _ServiceFeedScreenState extends State<ServiceFeedScreen> {
   List<_FolderGroup> _groupByFolder(List<Media> items) {
     final groups = <String, _FolderGroup>{};
 
-    for (final preset in defaultFoldersForCategory(widget.serviceKey)) {
+    final presetFolders = _folderMetadata.isNotEmpty
+        ? _folderMetadata
+              .map(
+                (folder) => ServiceFolderOption(
+                  collectionKey: folder.collectionKey,
+                  collectionTitle: folder.collectionTitle,
+                  sortOrder: folder.sortOrder,
+                ),
+              )
+              .toList(growable: false)
+        : defaultFoldersForCategory(widget.serviceKey);
+
+    for (final preset in presetFolders) {
       groups[preset.collectionKey] = _FolderGroup(
         collectionKey: preset.collectionKey,
         title: preset.collectionTitle,
+        sortOrder: preset.sortOrder,
       );
     }
 
@@ -90,7 +117,21 @@ class _ServiceFeedScreenState extends State<ServiceFeedScreen> {
     }
 
     final list = groups.values.toList(growable: false);
-    list.sort((a, b) => a.title.compareTo(b.title));
+    list.sort((a, b) {
+      final aOrder = a.sortOrder;
+      final bOrder = b.sortOrder;
+
+      if (aOrder != null && bOrder != null) {
+        final byOrder = aOrder.compareTo(bOrder);
+        if (byOrder != 0) return byOrder;
+      } else if (aOrder != null) {
+        return -1;
+      } else if (bOrder != null) {
+        return 1;
+      }
+
+      return a.title.compareTo(b.title);
+    });
     for (final group in list) {
       group.items.sort((a, b) {
         final sa = a.sequence ?? 1 << 30;
@@ -226,9 +267,14 @@ class _ServiceFeedScreenState extends State<ServiceFeedScreen> {
 class _FolderGroup {
   final String collectionKey;
   final String title;
+  final int? sortOrder;
   final List<Media> items = [];
 
-  _FolderGroup({required this.collectionKey, required this.title});
+  _FolderGroup({
+    required this.collectionKey,
+    required this.title,
+    this.sortOrder,
+  });
 }
 
 class _FoldersView extends StatelessWidget {
